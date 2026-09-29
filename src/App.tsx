@@ -8,11 +8,14 @@ import { EmergencyGuide } from './components/EmergencyGuide';
 import { SuccessModal } from './components/SuccessModal';
 import { CaseDetailModal } from './components/CaseDetailModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
+import { AdminLoginModal } from './components/AdminLoginModal';
 import type { SOSRequest, RequestStatus } from './types/sos';
 import { 
   fetchSOSRequests, 
   createSOSRequest, 
   updateSOSRequestStatus, 
+  deleteSOSRequest,
+  deleteCompletedSOSRequests,
   resetSOSRequestsToMock,
   subscribeToSOSChanges
 } from './services/db';
@@ -31,6 +34,34 @@ export function App() {
   const [submittedRequest, setSubmittedRequest] = useState<SOSRequest | null>(null);
   const [selectedCase, setSelectedCase] = useState<SOSRequest | null>(null);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && localStorage.getItem('thai_flood_is_admin') === 'true';
+  });
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+
+  // Handle Delete Single Case (Admin)
+  const handleDeleteCase = async (id: string) => {
+    const updated = await deleteSOSRequest(id);
+    setRequests(updated);
+    if (selectedCase && selectedCase.id === id) {
+      setSelectedCase(null);
+    }
+  };
+
+  // Handle Delete All Completed Cases (Admin)
+  const handleDeleteAllCompleted = async () => {
+    const updated = await deleteCompletedSOSRequests();
+    setRequests(updated);
+    if (selectedCase && selectedCase.status === 'COMPLETED') {
+      setSelectedCase(null);
+    }
+  };
+
+  // Handle Admin Logout
+  const handleLogoutAdmin = () => {
+    localStorage.removeItem('thai_flood_is_admin');
+    setIsAdmin(false);
+  };
 
   // Load and subscribe to requests (Supabase Realtime or LocalStorage)
   const refreshData = useCallback(async () => {
@@ -91,6 +122,9 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         requests={requests}
+        isAdmin={isAdmin}
+        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        onLogoutAdmin={handleLogoutAdmin}
       />
 
       {/* Main Content Area */}
@@ -104,6 +138,9 @@ export function App() {
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
+            isAdmin={isAdmin}
+            onDeleteCase={handleDeleteCase}
+            onDeleteAllCompleted={handleDeleteAllCompleted}
           />
         )}
 
@@ -123,7 +160,14 @@ export function App() {
         )}
       </main>
 
-      {/* Database Configuration Modal */}
+      {/* Admin Login Modal */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onLoginSuccess={() => setIsAdmin(true)}
+      />
+
+      {/* Database Configuration Modal (Admin only) */}
       <DatabaseConfigModal
         isOpen={isDbModalOpen}
         onClose={() => setIsDbModalOpen(false)}
@@ -152,6 +196,8 @@ export function App() {
           request={selectedCase}
           onClose={() => setSelectedCase(null)}
           onUpdateStatus={handleUpdateStatus}
+          isAdmin={isAdmin}
+          onDeleteCase={handleDeleteCase}
         />
       )}
 

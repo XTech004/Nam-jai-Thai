@@ -9,7 +9,9 @@ import {
   WifiOff, 
   PlusCircle,
   LifeBuoy,
-  Database
+  Database,
+  Shield,
+  ShieldCheck
 } from 'lucide-react';
 import type { SOSRequest } from '../types/sos';
 import { isSupabaseActive } from '../services/supabaseClient';
@@ -18,9 +20,19 @@ interface NavbarProps {
   activeTab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide';
   setActiveTab: (tab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide') => void;
   requests: SOSRequest[];
+  isAdmin?: boolean;
+  onOpenAdminLogin?: () => void;
+  onLogoutAdmin?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, requests }) => {
+export const Navbar: React.FC<NavbarProps> = ({ 
+  activeTab, 
+  setActiveTab, 
+  requests,
+  isAdmin = false,
+  onOpenAdminLogin,
+  onLogoutAdmin
+}) => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const isDbCloud = isSupabaseActive();
 
@@ -62,17 +74,46 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, request
           </a>
         </div>
         
-        {/* Status indicator (Read-only for security) */}
-        <div className="flex items-center gap-2 text-xs shrink-0 pl-2">
+        {/* Status indicator & Admin Mode Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs shrink-0 pl-2">
+          {isAdmin ? (
+            <div className="flex items-center gap-1 bg-purple-950/80 text-purple-200 px-2 py-0.5 rounded text-[11px] font-semibold border border-purple-400/40">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
+              <span>โหมดแอดมิน</span>
+              {onLogoutAdmin && (
+                <button
+                  onClick={onLogoutAdmin}
+                  className="ml-1 text-purple-300 hover:text-white underline text-[10px] cursor-pointer"
+                  title="ออกจากโหมดแอดมิน"
+                >
+                  (ออก)
+                </button>
+              )}
+            </div>
+          ) : (
+            onOpenAdminLogin && (
+              <button
+                onClick={onOpenAdminLogin}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-red-100 hover:text-white hover:bg-red-700/80 transition-colors cursor-pointer border border-red-400/40"
+                title="เข้าสู่โหมดแอดมิน"
+              >
+                <Shield className="w-3 h-3 text-red-200" />
+                <span>แอดมิน</span>
+              </button>
+            )
+          )}
+
           {isDbCloud ? (
             <span className="inline-flex items-center gap-1 text-emerald-200 text-[11px] font-medium bg-red-700/60 px-2 py-0.5 rounded">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>เซิร์ฟเวอร์ Real-time</span>
+              <span className="hidden sm:inline">เซิร์ฟเวอร์ Real-time</span>
+              <span className="sm:hidden">Real-time</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-amber-200 text-[11px] font-medium bg-red-700/60 px-2 py-0.5 rounded">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-              <span>โหมดสำรอง (Local DB)</span>
+              <span className="hidden sm:inline">โหมดสำรอง (Local DB)</span>
+              <span className="sm:hidden">Local DB</span>
             </span>
           )}
 

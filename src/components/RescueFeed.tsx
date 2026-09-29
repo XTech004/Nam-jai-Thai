@@ -13,7 +13,8 @@ import {
   ExternalLink,
   RefreshCw,
   Copy,
-  ChevronDown
+  ChevronDown,
+  Trash2
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { formatThaiDateTime, getUrgencyInfo, getWaterLevelInfo, getStatusInfo, getGoogleMapsUrl } from '../utils/formatters';
@@ -24,13 +25,19 @@ interface RescueFeedProps {
   onSelectCase: (request: SOSRequest) => void;
   onUpdateStatus: (id: string, status: RequestStatus, note?: string, rescuer?: string) => void;
   onResetMock?: () => void;
+  isAdmin?: boolean;
+  onDeleteCase?: (id: string) => void;
+  onDeleteAllCompleted?: () => void;
 }
 
 export const RescueFeed: React.FC<RescueFeedProps> = ({
   requests,
   onSelectCase,
   onUpdateStatus,
-  onResetMock
+  onResetMock,
+  isAdmin = false,
+  onDeleteCase,
+  onDeleteAllCompleted
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
@@ -103,16 +110,38 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
           </p>
         </div>
 
-        {onResetMock && (
-          <button
-            onClick={onResetMock}
-            title="รีเซ็ตเป็นข้อมูลตัวอย่างตั้งต้น"
-            className="text-xs text-slate-500 hover:text-slate-700 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 self-start sm:self-auto shadow-sm"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>รีเซ็ตข้อมูลตัวอย่าง</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {isAdmin && onDeleteAllCompleted && (
+            <button
+              onClick={() => {
+                const count = requests.filter(r => r.status === 'COMPLETED').length;
+                if (count === 0) {
+                  alert('ไม่มีเคสที่ช่วยเหลือสำเร็จแล้วให้ลบ');
+                  return;
+                }
+                if (window.confirm(`คุณต้องการลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (${count} เคส) ออกจากระบบหรือไม่?`)) {
+                  onDeleteAllCompleted();
+                }
+              }}
+              title="ลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (เฉพาะแอดมิน)"
+              className="text-xs text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all font-semibold cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>ลบเคสสำเร็จแล้วทั้งหมด ({requests.filter(r => r.status === 'COMPLETED').length})</span>
+            </button>
+          )}
+
+          {onResetMock && (
+            <button
+              onClick={onResetMock}
+              title="รีเซ็ตเป็นข้อมูลตัวอย่างตั้งต้น"
+              className="text-xs text-slate-500 hover:text-slate-700 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>รีเซ็ตข้อมูลตัวอย่าง</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Box */}
@@ -388,9 +417,26 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                       </button>
                     )}
                     {req.status === 'COMPLETED' && (
-                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
-                        <CheckCircle className="w-3.5 h-3.5" /> สำเร็จแล้ว
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                          <CheckCircle className="w-3.5 h-3.5" /> สำเร็จแล้ว
+                        </span>
+                        {isAdmin && onDeleteCase && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`คุณต้องการลบเคส "${req.fullName}" (รหัส: ${req.id}) ออกจากระบบหรือไม่?`)) {
+                                onDeleteCase(req.id);
+                              }
+                            }}
+                            title="ลบเคสที่ช่วยเหลือสำเร็จแล้วนี้ (เฉพาะแอดมิน)"
+                            className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 border border-red-200 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>ลบเคส</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

@@ -13,7 +13,8 @@ import {
   Share2, 
   Edit3, 
   Save, 
-  MessageSquare
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { 
@@ -29,12 +30,16 @@ interface CaseDetailModalProps {
   request: SOSRequest | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: RequestStatus, note?: string, rescuer?: string) => void;
+  isAdmin?: boolean;
+  onDeleteCase?: (id: string) => void;
 }
 
 export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
   request,
   onClose,
-  onUpdateStatus
+  onUpdateStatus,
+  isAdmin = false,
+  onDeleteCase
 }) => {
   if (!request) return null;
 
@@ -293,6 +298,24 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
               <Save className="w-3.5 h-3.5" />
               <span>{isSaved ? '✓ บันทึกข้อมูลเรียบร้อยแล้ว' : 'บันทึกการเปลี่ยนแปลงสถานะ'}</span>
             </button>
+
+            {isAdmin && request.status === 'COMPLETED' && onDeleteCase && (
+              <div className="mt-3 pt-3 border-t border-slate-200 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเคส "${request.fullName}" (รหัส: ${request.id}) ที่ช่วยเหลือสำเร็จแล้วออกจากระบบ?`)) {
+                      onDeleteCase(request.id);
+                      onClose();
+                    }
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors border border-red-200 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>ลบเคสนี้ออกจากระบบ (เฉพาะแอดมิน)</span>
+                </button>
+              </div>
+            )}
           </div>
 
         </div>

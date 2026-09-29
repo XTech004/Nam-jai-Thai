@@ -213,6 +213,54 @@ export async function updateSOSRequestStatus(
   return updatedLocal;
 }
 
+export async function deleteSOSRequest(requestId: string): Promise<SOSRequest[]> {
+  const supabase = getSupabaseClient();
+  const current = getLocalStoredRequests();
+  const updatedLocal = current.filter(req => req.id !== requestId);
+  saveToLocalStorage(updatedLocal);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('sos_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error deleting from Supabase:', error.message);
+      }
+    } catch (err) {
+      console.error('Exception deleting from Supabase:', err);
+    }
+  }
+
+  return updatedLocal;
+}
+
+export async function deleteCompletedSOSRequests(): Promise<SOSRequest[]> {
+  const supabase = getSupabaseClient();
+  const current = getLocalStoredRequests();
+  const updatedLocal = current.filter(req => req.status !== 'COMPLETED');
+  saveToLocalStorage(updatedLocal);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('sos_requests')
+        .delete()
+        .eq('status', 'COMPLETED');
+
+      if (error) {
+        console.error('Error deleting completed from Supabase:', error.message);
+      }
+    } catch (err) {
+      console.error('Exception deleting completed from Supabase:', err);
+    }
+  }
+
+  return updatedLocal;
+}
+
 export async function resetSOSRequestsToMock(): Promise<SOSRequest[]> {
   const supabase = getSupabaseClient();
   saveToLocalStorage(INITIAL_MOCK_REQUESTS);
