@@ -28,7 +28,6 @@ import { COMMON_NEEDS_LIST } from '../data/mockData';
 import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
 import { formatPhone } from '../services/userService';
 import { parseGoogleMapsCoordinates } from '../utils/formatters';
-import { IncompleteFormModal, type MissingFieldItem } from './IncompleteFormModal';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
@@ -166,10 +165,6 @@ export const SosForm: React.FC<SosFormProps> = ({
   const [googleMapsInput, setGoogleMapsInput] = useState<string>('');
   const [isParsedFromUrl, setIsParsedFromUrl] = useState<boolean>(false);
 
-  // Missing Fields Modal State
-  const [missingList, setMissingList] = useState<MissingFieldItem[]>([]);
-  const [isValidationModalOpen, setIsValidationModalOpen] = useState<boolean>(false);
-
   const handleGoogleMapsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setGoogleMapsInput(val);
@@ -198,9 +193,8 @@ export const SosForm: React.FC<SosFormProps> = ({
     setIsParsedFromUrl(false);
   };
 
-  const handleFixField = (elementId: string) => {
-    setIsValidationModalOpen(false);
-
+  // Scroll and pulse highlight directly to an unfilled field (เด้งไปที่ช่องยังไม่ได้กรอก)
+  const jumpToField = (elementId: string) => {
     // If trying to fix district without province, target province first
     let targetId = elementId;
     if (targetId === 'field-district' && !province) {
@@ -257,7 +251,7 @@ export const SosForm: React.FC<SosFormProps> = ({
           el.classList.remove('field-highlight-active');
         }, 4500);
       }
-    }, 120);
+    }, 50);
   };
 
 
@@ -376,101 +370,51 @@ export const SosForm: React.FC<SosFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { [key: string]: string } = {};
-    const missing: MissingFieldItem[] = [];
+    let firstMissingElementId = '';
 
     // 1. Location — Province (Section 2)
     if (!province) {
       errors.province = 'กรุณาเลือกจังหวัด';
-      missing.push({
-        id: 'missing-province',
-        fieldKey: 'province',
-        elementId: 'field-province',
-        label: 'จังหวัด',
-        message: 'ยังไม่ได้เลือกจังหวัด เพื่อให้ส่งเรื่องไปยังศูนย์กู้ภัยในพื้นที่',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-province';
     }
 
     // 2. Location — District (Section 2)
     if (!district) {
       errors.district = 'กรุณาเลือกอำเภอ';
-      missing.push({
-        id: 'missing-district',
-        fieldKey: 'district',
-        elementId: 'field-district',
-        label: 'อำเภอ',
-        message: 'ยังไม่ได้เลือกอำเภอ สำหรับระบุพิกัดกู้ภัยประจำพื้นที่',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-district';
     }
 
     // 3. Location — Landmark / Address (Section 2)
     if (!address.trim() && !landmark.trim()) {
       errors.address = 'กรุณาระบุบ้านเลขที่ ซอย หรือจุดสังเกตเด่น';
-      missing.push({
-        id: 'missing-landmark',
-        fieldKey: 'landmark',
-        elementId: 'field-landmark',
-        label: 'จุดสังเกตเด่น / ที่อยู่',
-        message: 'จำเป็นอย่างยิ่งในสถานการณ์น้ำท่วมเมื่อป้ายบ้านจมน้ำ (เช่น บ้านรั้วสีฟ้า หลังวัด)',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-landmark';
     }
 
     // 4. People Count & Needs (Section 3)
     const totalPeople = people.adults + people.elderly + people.bedridden + people.children + people.pets;
     if (totalPeople === 0) {
       errors.people = 'กรุณาระบุจำนวนผู้ติดค้างอย่างน้อย 1 คน';
-      missing.push({
-        id: 'missing-people',
-        fieldKey: 'people',
-        elementId: 'field-people',
-        label: 'จำนวนผู้ประสบภัยที่ติดค้าง',
-        message: 'ยังไม่ได้ระบุจำนวนผู้ติดค้าง เพื่อให้กู้ภัยจัดเตรียมเรือและขนาดทีมได้ถูกต้อง',
-        severity: 'warning'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-people';
     }
 
     // 5. Contact — Full Name (Section 4)
     if (!fullName.trim()) {
       errors.fullName = 'กรุณาระบุชื่อ-นามสกุล หรือชื่อเล่นผู้ติดต่อ';
-      missing.push({
-        id: 'missing-fullname',
-        fieldKey: 'fullName',
-        elementId: 'field-fullName',
-        label: 'ชื่อ-นามสกุล ผู้ติดต่อ',
-        message: 'ยังไม่ได้ระบุชื่อผู้ติดต่อ หรือชื่อเล่นของผู้ประสบภัย',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-fullName';
     }
 
     // 6. Contact — Primary Phone (Section 4)
     if (!primaryPhone.trim()) {
       errors.primaryPhone = 'กรุณาระบุเบอร์โทรศัพท์ที่ติดต่อได้';
-      missing.push({
-        id: 'missing-phone',
-        fieldKey: 'primaryPhone',
-        elementId: 'field-primaryPhone',
-        label: 'เบอร์โทรศัพท์ติดต่อ',
-        message: 'จำเป็นต้องมีเบอร์โทรเพื่อให้ทีมกู้ภัยสามารถติดต่อและประสานงานได้',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-primaryPhone';
     } else if (!/^[0-9\-+\s]{8,15}$/.test(primaryPhone.trim())) {
       errors.primaryPhone = 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (กรุณากรอก 9-10 หลัก)';
-      missing.push({
-        id: 'invalid-phone',
-        fieldKey: 'primaryPhone',
-        elementId: 'field-primaryPhone',
-        label: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
-        message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาตรวจสอบตัวเลข 9-10 หลัก',
-        severity: 'critical'
-      });
+      if (!firstMissingElementId) firstMissingElementId = 'field-primaryPhone';
     }
 
-    if (missing.length > 0) {
+    if (firstMissingElementId) {
       setFormErrors(errors);
-      setMissingList(missing);
-      setIsValidationModalOpen(true);
+      jumpToField(firstMissingElementId);
       return;
     }
 
@@ -1033,13 +977,6 @@ export const SosForm: React.FC<SosFormProps> = ({
         </div>
       </form>
 
-      {/* Missing Form Information Alert Modal */}
-      <IncompleteFormModal
-        isOpen={isValidationModalOpen}
-        onClose={() => setIsValidationModalOpen(false)}
-        missingFields={missingList}
-        onFixField={handleFixField}
-      />
     </div>
   );
 };
