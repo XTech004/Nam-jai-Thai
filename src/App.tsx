@@ -124,7 +124,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-20 sm:pb-8">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans pb-24 sm:pb-10">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -210,71 +210,84 @@ export function App() {
         />
       )}
 
-      {/* Mobile Sticky Bottom Tab Bar (Quick Access) */}
-      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-2 flex items-center justify-around z-40 sm:hidden shadow-lg">
+      {/* Sleek Mobile Bottom Tab Bar (iOS style frosted glass) */}
+      <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 py-2 px-3 flex items-center justify-around z-40 sm:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <button
           onClick={() => setActiveTab('form')}
-          className={`flex flex-col items-center py-1 px-2 text-[10px] font-bold ${
-            activeTab === 'form' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
+            activeTab === 'form' 
+              ? 'text-red-600 font-bold' 
+              : 'text-slate-500 hover:text-slate-900 font-medium'
           }`}
         >
-          <div className={`p-1 rounded-full ${activeTab === 'form' ? 'bg-red-100' : ''}`}>
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'form' ? 'bg-red-50 text-red-600' : ''}`}>
+            <AlertTriangle className="w-5 h-5" />
           </div>
-          <span>แจ้ง SOS</span>
+          <span className="text-[10px] mt-0.5">แจ้ง SOS</span>
         </button>
 
         <button
           onClick={() => setActiveTab('feed')}
-          className={`flex flex-col items-center py-1 px-2 text-[10px] font-bold ${
-            activeTab === 'feed' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all relative ${
+            activeTab === 'feed' 
+              ? 'text-red-600 font-bold' 
+              : 'text-slate-500 hover:text-slate-900 font-medium'
           }`}
         >
-          <div className={`p-1 rounded-full ${activeTab === 'feed' ? 'bg-red-100' : ''}`}>
+          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'feed' ? 'bg-red-50 text-red-600' : ''}`}>
             <ListFilter className="w-5 h-5" />
           </div>
-          <span>รายการเหตุ</span>
+          <span className="text-[10px] mt-0.5">รายการเหตุ</span>
+          {requests.length > 0 && (
+            <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-600"></span>
+          )}
         </button>
 
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex flex-col items-center py-1 px-2 text-[10px] font-bold ${
-            activeTab === 'map' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
+            activeTab === 'map' 
+              ? 'text-blue-600 font-bold' 
+              : 'text-slate-500 hover:text-slate-900 font-medium'
           }`}
         >
-          <div className={`p-1 rounded-full ${activeTab === 'map' ? 'bg-red-100' : ''}`}>
-            <MapPin className="w-5 h-5 text-blue-600" />
+          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'map' ? 'bg-blue-50 text-blue-600' : ''}`}>
+            <MapPin className="w-5 h-5" />
           </div>
-          <span>แผนที่</span>
+          <span className="text-[10px] mt-0.5">แผนที่</span>
         </button>
 
         <button
           onClick={() => setActiveTab('hotlines')}
-          className={`flex flex-col items-center py-1 px-2 text-[10px] font-bold ${
-            activeTab === 'hotlines' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
+            activeTab === 'hotlines' 
+              ? 'text-emerald-600 font-bold' 
+              : 'text-slate-500 hover:text-slate-900 font-medium'
           }`}
         >
-          <div className={`p-1 rounded-full ${activeTab === 'hotlines' ? 'bg-red-100' : ''}`}>
-            <PhoneCall className="w-5 h-5 text-emerald-600" />
+          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'hotlines' ? 'bg-emerald-50 text-emerald-600' : ''}`}>
+            <PhoneCall className="w-5 h-5" />
           </div>
-          <span>สายด่วน</span>
+          <span className="text-[10px] mt-0.5">สายด่วน</span>
         </button>
 
         <button
           onClick={() => setActiveTab('guide')}
-          className={`flex flex-col items-center py-1 px-2 text-[10px] font-bold ${
-            activeTab === 'guide' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
+            activeTab === 'guide' 
+              ? 'text-amber-600 font-bold' 
+              : 'text-slate-500 hover:text-slate-900 font-medium'
           }`}
         >
-          <div className={`p-1 rounded-full ${activeTab === 'guide' ? 'bg-red-100' : ''}`}>
-            <BookOpen className="w-5 h-5 text-amber-600" />
+          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'guide' ? 'bg-amber-50 text-amber-600' : ''}`}>
+            <BookOpen className="w-5 h-5" />
           </div>
-          <span>เอาตัวรอด</span>
+          <span className="text-[10px] mt-0.5">เอาตัวรอด</span>
         </button>
       </div>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+      <footer className="mt-auto border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <LifeBuoy className="w-4 h-4 text-red-600" />
