@@ -228,7 +228,10 @@ export async function registerOrLoginLineUser(lineProfile: {
     registeredAt: existing?.registeredAt || now,
     avatarUrl: lineProfile.pictureUrl,
     lineUserId: lineProfile.userId,
-    loginMethod: 'line'
+    loginMethod: 'line',
+    role: existing?.role || 'CITIZEN',
+    rescueOrg: existing?.rescueOrg,
+    callsign: existing?.callsign,
   };
 
   const currentUsers = localUsers.filter(u => u.id !== userId && u.lineUserId !== lineProfile.userId);
@@ -247,6 +250,9 @@ export async function registerOrLoginLineUser(lineProfile: {
         avatar_url: profile.avatarUrl || '',
         line_user_id: profile.lineUserId,
         login_method: 'line',
+        role: profile.role,
+        rescue_org: profile.rescueOrg,
+        callsign: profile.callsign,
         updated_at: now
       });
     } catch (e) {
@@ -255,6 +261,68 @@ export async function registerOrLoginLineUser(lineProfile: {
   }
 
   return profile;
+}
+
+// ==========================================
+// Rescuer Verification & Role Management
+// ==========================================
+
+const DEFAULT_RESCUER_PIN = '2567';
+
+export async function verifyAsRescuer(
+  userId: string,
+  orgName: string,
+  callsign: string,
+  pin: string
+): Promise<{ success: boolean; message: string; user?: UserProfile }> {
+  const currentPin = localStorage.getItem('thai_flood_admin_pin') || DEFAULT_RESCUER_PIN;
+  if (pin.trim() !== currentPin && pin.trim() !== DEFAULT_RESCUER_PIN) {
+    return {
+      success: false,
+      message: 'รหัสยืนยันหน่วยงานกู้ภัยไม่ถูกต้อง กรุณาติดต่อหัวหน้าศูนย์กู้ภัยของคุณ (PIN เริ่มต้น: 2567)',
+    };
+  }
+
+  const localUsers = getRegisteredUsers();
+  const targetUser = localUsers.find(u => u.id === userId) || getCurrentUser();
+  if (!targetUser) {
+    return { success: false, message: 'ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบด้วย LINE ก่อน' };
+  }
+
+  const updatedProfile: UserProfile = {
+    ...targetUser,
+    role: 'RESCUER',
+    rescueOrg: orgName.trim() || 'หน่วยกู้ภัยอาสา',
+    callsign: callsign.trim() || undefined,
+  };
+
+  const remaining = localUsers.filter(u => u.id !== userId);
+  saveRegisteredUsers([updatedProfile, ...remaining]);
+  setCurrentUser(updatedProfile);
+
+  return {
+    success: true,
+    message: `ยืนยันตัวตนเจ้าหน้าที่กู้ภัยสังกัด "${updatedProfile.rescueOrg}" สำเร็จแล้ว!`,
+    user: updatedProfile,
+  };
+}
+
+export async function revertToCitizen(userId: string): Promise<UserProfile | null> {
+  const localUsers = getRegisteredUsers();
+  const targetUser = localUsers.find(u => u.id === userId) || getCurrentUser();
+  if (!targetUser) return null;
+
+  const updatedProfile: UserProfile = {
+    ...targetUser,
+    role: 'CITIZEN',
+    rescueOrg: undefined,
+    callsign: undefined,
+  };
+
+  const remaining = localUsers.filter(u => u.id !== userId);
+  saveRegisteredUsers([updatedProfile, ...remaining]);
+  setCurrentUser(updatedProfile);
+  return updatedProfile;
 }
 
 // ==========================================

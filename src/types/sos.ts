@@ -64,6 +64,8 @@ export interface EmergencyContact {
   category: 'national' | 'medical' | 'rescue' | 'utility';
 }
 
+export type UserRole = 'CITIZEN' | 'RESCUER' | 'ADMIN';
+
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -73,4 +75,7 @@ export interface UserProfile {
   avatarUrl?: string;
   lineUserId?: string;
   loginMethod?: 'phone' | 'line';
+  role?: UserRole;
+  rescueOrg?: string;
+  callsign?: string;
 }

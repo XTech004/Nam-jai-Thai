@@ -10,6 +10,7 @@ import { CaseDetailModal } from './components/CaseDetailModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { UserAuthModal } from './components/UserAuthModal';
+import { RescuerVerificationModal } from './components/RescuerVerificationModal';
 import type { SOSRequest, RequestStatus, UserProfile } from './types/sos';
 import { getCurrentUser, logoutUser, USER_AUTH_EVENT } from './services/userService';
 import { initLiff, logoutLine } from './services/liffService';
@@ -52,6 +53,7 @@ export function App() {
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
   const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
+  const [isRescuerModalOpen, setIsRescuerModalOpen] = useState(false);
 
   // Check if admin=1 is present in URL
   const [hasAdminUrl, setHasAdminUrl] = useState<boolean>(() => {
@@ -112,6 +114,8 @@ export function App() {
 
   // Admin access is strictly active only when ?admin=1 is in URL AND PIN is verified
   const isEffectiveAdmin = hasAdminUrl && isAdmin;
+  // Rescuer permission: Admin OR account verified with RESCUER / ADMIN role
+  const isRescuer = isEffectiveAdmin || currentUser?.role === 'RESCUER' || currentUser?.role === 'ADMIN';
 
   // Handle Delete Single Case (Admin)
   const handleDeleteCase = async (id: string) => {
@@ -209,13 +213,14 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         requests={requests}
-        isAdmin={isEffectiveAdmin}
+        isAdmin={isRescuer}
         showAdminOption={hasAdminUrl}
         currentUser={currentUser}
         onOpenUserAuth={() => setIsUserAuthOpen(true)}
         onLogoutUser={handleLogoutUser}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
+        onOpenRescuerVerify={() => setIsRescuerModalOpen(true)}
       />
 
       {/* Main Content Area — re-keyed so switching tabs animates in */}
@@ -233,7 +238,7 @@ export function App() {
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
-            isAdmin={isEffectiveAdmin}
+            isAdmin={isRescuer}
             onResetMock={handleResetMock}
             onDeleteCase={handleDeleteCase}
             onDeleteAllCompleted={handleDeleteAllCompleted}
@@ -245,7 +250,7 @@ export function App() {
           <RescueMap
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
-            isAdmin={isEffectiveAdmin}
+            isAdmin={isRescuer}
           />
         )}
 
@@ -265,6 +270,17 @@ export function App() {
         onSuccess={(user) => {
           setCurrentUser(user);
         }}
+      />
+
+      {/* Rescuer Organization Verification Modal */}
+      <RescuerVerificationModal
+        isOpen={isRescuerModalOpen}
+        onClose={() => setIsRescuerModalOpen(false)}
+        currentUser={currentUser}
+        onVerified={(user) => {
+          setCurrentUser(user);
+        }}
+        onOpenLineLogin={() => setIsUserAuthOpen(true)}
       />
 
       {/* Admin Login Modal */}
@@ -303,9 +319,15 @@ export function App() {
           request={selectedCase}
           onClose={() => setSelectedCase(null)}
           onUpdateStatus={handleUpdateStatus}
-          isAdmin={isEffectiveAdmin}
+          isAdmin={isRescuer}
           onDeleteCase={handleDeleteCase}
-          onRequestAdminLogin={() => setIsAdminLoginOpen(true)}
+          onRequestAdminLogin={() => {
+            if (!currentUser) {
+              setIsUserAuthOpen(true);
+            } else {
+              setIsRescuerModalOpen(true);
+            }
+          }}
         />
       )}
 

@@ -31,6 +31,7 @@ import {
 import { buildSosShareText, copyToClipboard, getLineShareUrl } from '../utils/shareHelpers';
 import { getWeatherNext3Forecast } from '../services/weatherAiService';
 import { maskPhone } from '../utils/privacy';
+import { getCurrentUser } from '../services/userService';
 
 interface CaseDetailModalProps {
   request: SOSRequest | null;
@@ -57,7 +58,14 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
   const [copied, setCopied] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<RequestStatus>(request.status);
   const [responderNotes, setResponderNotes] = useState<string>(request.responderNotes || '');
-  const [rescuerName, setRescuerName] = useState<string>(request.rescuedBy || '');
+  const [rescuerName, setRescuerName] = useState<string>(() => {
+    if (request.rescuedBy) return request.rescuedBy;
+    const cur = getCurrentUser();
+    if (cur?.rescueOrg) {
+      return `${cur.rescueOrg}${cur.callsign ? ` (${cur.callsign})` : ` - คุณ${cur.firstName}`}`;
+    }
+    return '';
+  });
   const [isSaved, setIsSaved] = useState<boolean>(false);
 
   const urgency = getUrgencyInfo(request.urgency);
@@ -545,10 +553,10 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
                     <button
                       type="button"
                       onClick={onRequestAdminLogin}
-                      className="shrink-0 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      className="shrink-0 px-3.5 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                     >
-                      <Lock className="w-3 h-3 text-amber-400" />
-                      <span>เจ้าหน้าที่กู้ภัย? ใส่ PIN</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                      <span>เจ้าหน้าที่กู้ภัย? ยืนยันสิทธิ์</span>
                     </button>
                   )}
                 </div>

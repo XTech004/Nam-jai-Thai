@@ -42,6 +42,7 @@ interface NavbarProps {
   onLogoutUser?: () => void;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
+  onOpenRescuerVerify?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -54,7 +55,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserAuth,
   onLogoutUser,
   onOpenAdminLogin,
-  onLogoutAdmin
+  onLogoutAdmin,
+  onOpenRescuerVerify,
 }) => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const isDbCloud = isSupabaseActive();
@@ -115,24 +117,49 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {currentUser ? (
-            <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-1.5 text-xs font-semibold text-slate-800">
-              <span className="grid size-6 place-items-center overflow-hidden rounded-full bg-emerald-100">
-                {currentUser.avatarUrl ? (
-                  <img src={currentUser.avatarUrl} alt={currentUser.firstName} className="size-full object-cover" />
-                ) : (
-                  <UserIcon className="size-3.5 text-emerald-700" />
-                )}
-              </span>
-              <span className="hidden max-w-[6rem] truncate sm:max-w-[9rem] sm:inline">
-                {currentUser.firstName}
-              </span>
-              <button
-                onClick={onLogoutUser}
-                title="ออกจากระบบ"
-                className="rounded-full px-1.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-              >
-                ออก
-              </button>
+            <div className="flex items-center gap-1.5">
+              {currentUser.role === 'RESCUER' ? (
+                <button
+                  type="button"
+                  onClick={onOpenRescuerVerify}
+                  title="คลิกเพื่อดูหรือแก้ไขข้อมูลสังกัดกู้ภัย"
+                  className="inline-flex items-center gap-1 rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-950 shadow-2xs hover:bg-orange-100 transition-colors cursor-pointer"
+                >
+                  <span className="size-2 rounded-full bg-orange-500 animate-pulse" />
+                  <span>🚒 กู้ภัย</span>
+                  <span className="hidden sm:inline text-orange-800 font-medium">({currentUser.rescueOrg ? currentUser.rescueOrg.slice(0, 16) : 'ยืนยันแล้ว'})</span>
+                </button>
+              ) : (
+                onOpenRescuerVerify && (
+                  <button
+                    type="button"
+                    onClick={onOpenRescuerVerify}
+                    className="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-orange-50 hover:text-orange-800 hover:border-orange-300 transition-colors cursor-pointer"
+                  >
+                    <span>🚒 คุณเป็นกู้ภัย?</span>
+                  </button>
+                )
+              )}
+
+              <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-1.5 text-xs font-semibold text-slate-800">
+                <span className="grid size-6 place-items-center overflow-hidden rounded-full bg-emerald-100">
+                  {currentUser.avatarUrl ? (
+                    <img src={currentUser.avatarUrl} alt={currentUser.firstName} className="size-full object-cover" />
+                  ) : (
+                    <UserIcon className="size-3.5 text-emerald-700" />
+                  )}
+                </span>
+                <span className="hidden max-w-[6rem] truncate sm:max-w-[8rem] sm:inline">
+                  {currentUser.firstName}
+                </span>
+                <button
+                  onClick={onLogoutUser}
+                  title="ออกจากระบบ"
+                  className="rounded-full px-1.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                >
+                  ออก
+                </button>
+              </div>
             </div>
           ) : (
             onOpenUserAuth && (
