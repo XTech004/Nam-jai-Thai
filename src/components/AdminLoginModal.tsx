@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Lock, X, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
 
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: () => void;
 }
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 60;
+const FAILED_COUNT_KEY = 'thai_flood_admin_failed_attempts';
+const LOCKOUT_TIME_KEY = 'thai_flood_admin_lockout_time';
 
 export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   isOpen,
@@ -14,20 +19,92 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [lockoutRemaining, setLockoutRemaining] = useState<number>(0);
+
+  // Check lockout on open
+  useEffect(() => {
+    if (isOpen) {
+      setPin('');
+      setError('');
+      checkLockout();
+    }
+  }, [isOpen]);
+
+  // Lockout countdown timer
+  useEffect(() => {
+    let timer: any;
+    if (lockoutRemaining > 0) {
+      timer = setInterval(() => {
+        setLockoutRemaining(prev => {
+          if (prev <= 1) {
+            localStorage.removeItem(LOCKOUT_TIME_KEY);
+            localStorage.removeItem(FAILED_COUNT_KEY);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [lockoutRemaining]);
+
+  const checkLockout = () => {
+    try {
+      const lockedUntil = localStorage.getItem(LOCKOUT_TIME_KEY);
+      if (lockedUntil) {
+        const remaining = Math.ceil((parseInt(lockedUntil, 10) - Date.now()) / 1000);
+        if (remaining > 0) {
+          setLockoutRemaining(remaining);
+          return true;
+        } else {
+          localStorage.removeItem(LOCKOUT_TIME_KEY);
+          localStorage.removeItem(FAILED_COUNT_KEY);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return false;
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default PIN: 1784 (สายด่วน ปภ.) or admin
-    if (pin.trim() === '1784' || pin.trim().toLowerCase() === 'admin' || pin.trim() === '1234') {
-      localStorage.setItem('thai_flood_is_admin', 'true');
+    if (lockoutRemaining > 0) return;
+
+    const trimmed = pin.trim();
+
+    // Verify Admin / Rescuer PIN
+    if (trimmed === '1784' || trimmed.toLowerCase() === 'admin' || trimmed === '8888') {
+      try {
+        localStorage.setItem('thai_flood_is_admin', 'true');
+        localStorage.removeItem(FAILED_COUNT_KEY);
+        localStorage.removeItem(LOCKOUT_TIME_KEY);
+      } catch (e) {
+        // ignore
+      }
       setError('');
       setPin('');
       onLoginSuccess();
       onClose();
     } else {
-      setError('รหัสผ่านไม่ถูกต้อง (รหัสผ่านเริ่มต้นคือ 1784)');
+      // Record failed attempt
+      try {
+        const currentFailed = parseInt(localStorage.getItem(FAILED_COUNT_KEY) || '0', 10) + 1;
+        localStorage.setItem(FAILED_COUNT_KEY, currentFailed.toString());
+
+        if (currentFailed >= MAX_FAILED_ATTEMPTS) {
+          const lockTime = Date.now() + LOCKOUT_SECONDS * 1000;
+          localStorage.setItem(LOCKOUT_TIME_KEY, lockTime.toString());
+          setLockoutRemaining(LOCKOUT_SECONDS);
+          setError(`ป้อนรหัสผิดเกินกำหนด ระบบระงับการเข้าสู่ระบบชั่วคราว ${LOCKOUT_SECONDS} วินาที`);
+        } else {
+          setError(`รหัสผ่านไม่ถูกต้อง (เหลือโอกาสอีก ${MAX_FAILED_ATTEMPTS - currentFailed} ครั้ง)`);
+        }
+      } catch (e) {
+        setError('รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
+      }
     }
   };
 
@@ -47,10 +124,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900">
-              เข้าสู่โหมดแอดมิน
+              เข้าสู่ระบบเจ้าหน้าที่ / แอดมิน
             </h3>
             <p className="text-xs text-slate-500">
-              สำหรับผู้ดูแลระบบและหัวหน้าชุดกู้ภัย
+              สำหรับทีมกู้ภัยและผู้ดูแลระบบเท่านั้น
             </p>
           </div>
         </div>
@@ -58,29 +135,34 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              รหัสผ่านผู้ดูแลระบบ (Admin PIN)
+              รหัสผ่านยืนยันตัวตน (PIN Code)
             </label>
             <div className="relative">
               <input
                 type="password"
                 autoFocus
-                placeholder="กรอกรหัส PIN (เช่น 1784)"
+                disabled={lockoutRemaining > 0}
+                placeholder="กรอกรหัส PIN สำหรับเจ้าหน้าที่"
                 value={pin}
                 onChange={(e) => {
                   setPin(e.target.value);
                   setError('');
                 }}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none tracking-wider font-mono"
+                className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none tracking-widest font-mono disabled:bg-slate-100 disabled:cursor-not-allowed"
               />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              💡 รหัสผ่านเริ่มต้นคือ: <strong className="text-purple-600 font-mono">1784</strong> (สายด่วน ปภ.)
-            </p>
+
+            {lockoutRemaining > 0 && (
+              <div className="mt-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>ระงับการเข้าสู่ระบบ: กรุณารอ {lockoutRemaining} วินาที</span>
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-1.5">
+          {error && lockoutRemaining === 0 && (
+            <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
               <span>{error}</span>
             </div>
@@ -90,16 +172,17 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+              disabled={lockoutRemaining > 0 || !pin.trim()}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 active:scale-98 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              ยืนยันเข้าสู่ระบบ
+              <span>ยืนยันเข้าสู่ระบบ</span>
             </button>
           </div>
         </form>

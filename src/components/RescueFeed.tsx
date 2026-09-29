@@ -1,22 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Phone, 
-  Navigation, 
-  Clock, 
-  MapPin, 
-  Users, 
-  AlertTriangle, 
-  CheckCircle, 
-  Share2, 
-  RefreshCw,
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Search,
+  X,
+  Phone,
+  Navigation,
+  Clock,
+  MapPin,
+  Flag,
+  CheckCircle,
+  CheckCircle2,
   Copy,
-  ChevronDown,
   Trash2,
-  LifeBuoy,
-  PlusCircle,
-  Sparkles
+  SlidersHorizontal,
+  OctagonAlert,
+  AlertTriangle,
+  Info,
+  ChevronDown,
+  Users,
+  BedDouble,
+  Share2
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { formatThaiDateTime, getUrgencyInfo, getWaterLevelInfo, getStatusInfo, getGoogleMapsUrl } from '../utils/formatters';
@@ -33,6 +35,19 @@ interface RescueFeedProps {
   onClearAll?: () => void;
 }
 
+const URGENCY_FILTERS = [
+  { id: 'ALL', label: 'ทั้งหมด', dot: 'bg-slate-400' },
+  { id: 'CRITICAL', label: 'วิกฤต', dot: 'bg-rose-500', icon: OctagonAlert },
+  { id: 'URGENT', label: 'เร่งด่วน', dot: 'bg-amber-500', icon: AlertTriangle },
+  { id: 'NORMAL', label: 'ทั่วไป', dot: 'bg-emerald-500', icon: Info }
+] as const;
+
+const URGENCY_ACCENT: Record<SOSRequest['urgency'], string> = {
+  CRITICAL: 'bg-rose-500',
+  URGENT: 'bg-amber-500',
+  NORMAL: 'bg-emerald-500'
+};
+
 export const RescueFeed: React.FC<RescueFeedProps> = ({
   requests,
   onSelectCase,
@@ -48,6 +63,20 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [provinceFilter, setProvinceFilter] = useState<string>('ALL');
   const [copyStatusId, setCopyStatusId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const adminMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!showAdminMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (adminMenuRef.current && !adminMenuRef.current.contains(e.target as Node)) {
+        setShowAdminMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showAdminMenu]);
 
   // Available provinces
   const provinces = useMemo(() => {
@@ -58,10 +87,20 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
     return Array.from(set);
   }, [requests]);
 
+  const counts = useMemo(
+    () => ({
+      total: requests.length,
+      critical: requests.filter(r => r.urgency === 'CRITICAL').length,
+      pending: requests.filter(r => r.status === 'PENDING').length,
+      responding: requests.filter(r => r.status === 'RESPONDING').length,
+      completed: requests.filter(r => r.status === 'COMPLETED').length
+    }),
+    [requests]
+  );
+
   // Filtered requests
   const filteredRequests = useMemo(() => {
     return requests.filter(req => {
-      // Search term
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchesName = req.fullName.toLowerCase().includes(term);
@@ -73,17 +112,14 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
         }
       }
 
-      // Urgency filter
       if (urgencyFilter !== 'ALL' && req.urgency !== urgencyFilter) {
         return false;
       }
 
-      // Status filter
       if (statusFilter !== 'ALL' && req.status !== statusFilter) {
         return false;
       }
 
-      // Province filter
       if (provinceFilter !== 'ALL' && req.province !== provinceFilter) {
         return false;
       }
@@ -91,6 +127,15 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
       return true;
     });
   }, [requests, searchTerm, urgencyFilter, statusFilter, provinceFilter]);
+
+  const hasAdvancedFilter = statusFilter !== 'ALL' || provinceFilter !== 'ALL';
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setUrgencyFilter('ALL');
+    setStatusFilter('ALL');
+    setProvinceFilter('ALL');
+  };
 
   const handleCopy = async (req: SOSRequest, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -101,157 +146,125 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-5 sm:py-8">
-      
-      {/* Title & Stats Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
+
+      {/* Header */}
+      <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              รายการขอความช่วยเหลือ (Live Feed)
-            </h1>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            กระดานข้อมูลสดแบบเรียลไทม์ สำหรับทีมกู้ภัย จิตอาสา และศูนย์ประสานงาน
+          <h1 className="page-title flex items-center gap-2.5">
+            <span className="size-2.5 animate-sos-pulse rounded-full bg-rose-600" />
+            รายการขอความช่วยเหลือ
+          </h1>
+          <p className="page-subtitle">
+            กระดานข้อมูลสดเรียลไทม์ สำหรับทีมกู้ภัย จิตอาสา และศูนย์ประสานงาน
           </p>
         </div>
 
-        {/* Admin Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && onDeleteAllCompleted && requests.some(r => r.status === 'COMPLETED') && (
-            <button
-              onClick={() => {
-                const count = requests.filter(r => r.status === 'COMPLETED').length;
-                if (window.confirm(`คุณต้องการลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (${count} เคส) ออกจากระบบหรือไม่?`)) {
-                  onDeleteAllCompleted();
-                }
-              }}
-              title="ลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (เฉพาะแอดมิน)"
-              className="text-xs text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all font-semibold cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>ลบเคสสำเร็จแล้ว ({requests.filter(r => r.status === 'COMPLETED').length})</span>
-            </button>
-          )}
+        {/* Live stat strip */}
+        {requests.length > 0 && (
+          <dl className="flex shrink-0 gap-1.5">
+            {[
+              { label: 'วิกฤต', value: counts.critical, tone: 'text-rose-600' },
+              { label: 'รอดำเนินการ', value: counts.pending, tone: 'text-amber-600' },
+              { label: 'กำลังช่วย', value: counts.responding, tone: 'text-sky-600' },
+              { label: 'สำเร็จ', value: counts.completed, tone: 'text-emerald-600' }
+            ].map(stat => (
+              <div
+                key={stat.label}
+                className="min-w-[4.25rem] rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 text-center shadow-[var(--shadow-soft)]"
+              >
+                <dd className={`text-lg font-black leading-none tabular-nums ${stat.tone}`}>{stat.value}</dd>
+                <dt className="mt-1 text-[10px] font-medium text-slate-500">{stat.label}</dt>
+              </div>
+            ))}
+          </dl>
+        )}
+      </header>
 
-          {isAdmin && onClearAll && requests.length > 0 && (
-            <button
-              onClick={() => {
-                if (window.confirm(`⚠️ คำเตือน: คุณต้องการล้างข้อมูลทั้งหมดในระบบให้ว่างเปล่า (${requests.length} เคส) หรือไม่?\n\nข้อมูลจะถูกล้างออกจากฐานข้อมูลอย่างถาวร เพื่อให้ระบบโล่งพร้อมใช้งานจริง`)) {
-                  onClearAll();
-                }
-              }}
-              title="ล้างข้อมูลทั้งหมดให้ระบบว่างเปล่า/โล่ง (เฉพาะแอดมิน)"
-              className="text-xs text-white bg-red-600 hover:bg-red-700 border border-red-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all font-bold cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>ล้างกระดานให้โล่ง ({requests.length})</span>
-            </button>
-          )}
-
-          {onResetMock && (
-            <button
-              onClick={onResetMock}
-              title="รีเซ็ตเป็นข้อมูลตัวอย่างตั้งต้น"
-              className="text-xs text-slate-500 hover:text-slate-700 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-xs cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>ข้อมูลตัวอย่าง</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* If No Requests At All -> Beautiful, Serene Empty State (Decluttered!) */}
+      {/* Empty state */}
       {requests.length === 0 ? (
-        <div className="text-center py-16 px-6 bg-white rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)]">
-          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-emerald-100 shadow-xs">
-            <CheckCircle className="w-8 h-8" />
+        <div className="surface px-6 py-16 text-center">
+          <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+            <CheckCircle className="size-7" />
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800">
-            ยังไม่มีรายการขอความช่วยเหลือในระบบ
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-md mx-auto leading-relaxed">
-            กระดานข้อมูลว่างเปล่าและพร้อมใช้งานจริง ข้อมูลที่ประชาชนแจ้งผ่านหน้า "แจ้ง SOS ด่วน" จะปรากฏขึ้นที่นี่แบบเรียลไทม์ทันที
+          <h2 className="text-lg font-bold text-slate-800">ยังไม่มีรายการขอความช่วยเหลือในระบบ</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-slate-500">
+            กระดานข้อมูลว่างเปล่าและพร้อมใช้งานจริง เคสที่ประชาชนแจ้งจะปรากฏที่นี่แบบเรียลไทม์ทันที
           </p>
         </div>
       ) : (
         <>
-          {/* Filter and Search Box (Only shown when there are requests) */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)] mb-4 space-y-3">
-            {/* Search Input */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ, เบอร์โทร, จังหวัด, อำเภอ หรือจุดสังเกต..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-slate-50/60"
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600 bg-slate-200 rounded-full w-5 h-5 flex items-center justify-center"
-                >
-                  ✕
-                </button>
-              )}
+          {/* Filter bar */}
+          <div className="surface mb-4 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="ค้นหาชื่อ, เบอร์โทร, จังหวัด, อำเภอ, จุดสังเกต หรือรหัสเคส"
+                  className="field bg-slate-50 pl-9 pr-9"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    aria-label="ล้างคำค้นหา"
+                    className="absolute right-2.5 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full bg-slate-200 text-slate-500 transition-colors hover:bg-slate-300"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowAdvanced(v => !v)}
+                className={`chip ${
+                  showAdvanced || hasAdvancedFilter
+                    ? 'border-slate-300 bg-white text-slate-900 shadow-xs'
+                    : 'chip-idle'
+                }`}
+              >
+                <SlidersHorizontal className="size-3.5" />
+                ตัวกรอง
+                {hasAdvancedFilter && <span className="size-1.5 rounded-full bg-rose-500" />}
+                <ChevronDown className={`size-3 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+              </button>
             </div>
 
-            {/* Quick Filter Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <button
-                onClick={() => setUrgencyFilter('ALL')}
-                className={`px-3 py-1 rounded-xl font-medium transition-all ${
-                  urgencyFilter === 'ALL'
-                    ? 'bg-slate-900 text-white font-bold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                ทั้งหมด ({requests.length})
-              </button>
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {URGENCY_FILTERS.map(f => {
+                const isActive = urgencyFilter === f.id;
+                const value = f.id === 'ALL' ? counts.total : requests.filter(r => r.urgency === f.id).length;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setUrgencyFilter(f.id)}
+                    aria-pressed={isActive}
+                    className={`chip ${
+                      isActive
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'chip-idle'
+                    }`}
+                  >
+                    {'icon' in f && f.icon ? (
+                      <f.icon className={`size-3.5 ${isActive ? 'text-white' : f.dot}`} />
+                    ) : (
+                      <span className={`size-2 rounded-full ${f.dot}`} />
+                    )}
+                    {f.label}
+                    <span className={`tabular-nums ${isActive ? 'text-white/70' : 'text-slate-400'}`}>{value}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-              <button
-                onClick={() => setUrgencyFilter('CRITICAL')}
-                className={`px-3 py-1 rounded-xl font-bold transition-all ${
-                  urgencyFilter === 'CRITICAL'
-                    ? 'bg-red-600 text-white ring-2 ring-red-200'
-                    : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                }`}
-              >
-                🔴 วิกฤต ({requests.filter(r => r.urgency === 'CRITICAL').length})
-              </button>
-
-              <button
-                onClick={() => setUrgencyFilter('URGENT')}
-                className={`px-3 py-1 rounded-xl font-semibold transition-all ${
-                  urgencyFilter === 'URGENT'
-                    ? 'bg-amber-500 text-slate-900 ring-2 ring-amber-200'
-                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                }`}
-              >
-                🟡 เร่งด่วน ({requests.filter(r => r.urgency === 'URGENT').length})
-              </button>
-
-              <button
-                onClick={() => setUrgencyFilter('NORMAL')}
-                className={`px-3 py-1 rounded-xl font-medium transition-all ${
-                  urgencyFilter === 'NORMAL'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
-                }`}
-              >
-                🟢 ทั่วไป ({requests.filter(r => r.urgency === 'NORMAL').length})
-              </button>
-
-              {/* Status and Province dropdowns */}
-              <div className="ml-auto flex items-center gap-1.5">
+            {showAdvanced && (
+              <div className="mt-3 flex animate-fade flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-2.5 py-1 focus:outline-none"
+                  className="field w-auto min-w-[9rem] py-1.5 text-xs"
                 >
                   <option value="ALL">สถานะทั้งหมด</option>
                   <option value="PENDING">รอดำเนินการ</option>
@@ -263,7 +276,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                   <select
                     value={provinceFilter}
                     onChange={(e) => setProvinceFilter(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-2.5 py-1 focus:outline-none"
+                    className="field w-auto min-w-[9rem] py-1.5 text-xs"
                   >
                     <option value="ALL">ทุกจังหวัด</option>
                     {provinces.map(prov => (
@@ -271,209 +284,305 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                     ))}
                   </select>
                 )}
+
+                <span className="text-[11px] text-slate-400 tabular-nums">
+                  แสดง {filteredRequests.length} จาก {counts.total} เคส
+                </span>
+
+                {(hasAdvancedFilter || searchTerm) && (
+                  <button
+                    onClick={resetFilters}
+                    className="ml-auto text-[11px] font-semibold text-slate-500 underline-offset-4 transition-colors hover:text-rose-600 hover:underline"
+                  >
+                    ล้างตัวกรองทั้งหมด
+                  </button>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Case List Feed */}
+          {/* Admin actions — collapsed behind one control */}
+          {isAdmin && (
+            <div ref={adminMenuRef} className="mb-4 flex justify-end">
+              <button
+                onClick={() => setShowAdminMenu(v => !v)}
+                className="chip border-slate-200 bg-white text-slate-600 shadow-xs hover:border-slate-300 hover:text-slate-900"
+              >
+                <SlidersHorizontal className="size-3.5" />
+                จัดการข้อมูล
+                <ChevronDown className={`size-3 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showAdminMenu && (
+                <div className="absolute z-20 mt-9 flex animate-fade flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[var(--shadow-lift)]">
+                  {onDeleteAllCompleted && counts.completed > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowAdminMenu(false);
+                        if (window.confirm(`คุณต้องการลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (${counts.completed} เคส) ออกจากระบบหรือไม่?`)) {
+                          onDeleteAllCompleted();
+                        }
+                      }}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                      ลบเคสสำเร็จแล้ว ({counts.completed})
+                    </button>
+                  )}
+
+                  {onResetMock && (
+                    <button
+                      onClick={() => {
+                        setShowAdminMenu(false);
+                        onResetMock();
+                      }}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      <Users className="size-3.5" />
+                      รีเซ็ตเป็นข้อมูลตัวอย่าง
+                    </button>
+                  )}
+
+                  {onClearAll && requests.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowAdminMenu(false);
+                        if (window.confirm(`⚠️ คำเตือน: คุณต้องการล้างข้อมูลทั้งหมดให้ระบบว่างเปล่า (${requests.length} เคส) หรือไม่?\n\nข้อมูลจะถูกล้างออกจากฐานข้อมูลอย่างถาวร`)) {
+                          onClearAll();
+                        }
+                      }}
+                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+                    >
+                      <Trash2 className="size-3.5" />
+                      ล้างกระดานให้โล่ง ({requests.length})
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Case list */}
           {filteredRequests.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-3xl border border-slate-200/80 p-6">
-              <AlertTriangle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <h3 className="font-bold text-slate-700 text-sm">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</h3>
-              <p className="text-xs text-slate-500 mt-1">ลองเปลี่ยนคำค้นหา หรือกดเลือกตัวกรอง "ทั้งหมด"</p>
+            <div className="surface p-12 text-center">
+              <AlertTriangle className="mx-auto mb-2 size-9 text-slate-300" />
+              <h3 className="text-sm font-bold text-slate-700">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</h3>
+              <button
+                onClick={resetFilters}
+                className="mt-2 text-xs font-semibold text-rose-600 underline-offset-4 hover:underline"
+              >
+                ล้างตัวกรอง
+              </button>
             </div>
           ) : (
-            <div className="space-y-3.5">
-              {filteredRequests.map((req) => {
+            <ul className="space-y-3">
+              {filteredRequests.map(req => {
                 const urgency = getUrgencyInfo(req.urgency);
                 const water = getWaterLevelInfo(req.waterLevel);
                 const status = getStatusInfo(req.status);
+                const totalPeople =
+                  req.people.adults + req.people.elderly + req.people.bedridden + req.people.children;
 
                 return (
-                  <div
-                    key={req.id}
-                    onClick={() => onSelectCase(req)}
-                    className="bg-white rounded-3xl border border-slate-200/80 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.03)] hover:shadow-md transition-all cursor-pointer p-4 sm:p-5 relative"
-                  >
-                    {/* Header Row: ID, Time, Urgency & Status Badge */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${urgency.badgeClass}`}>
+                  <li key={req.id}>
+                    <article
+                      onClick={() => onSelectCase(req)}
+                      className={`surface surface-interactive relative cursor-pointer overflow-hidden p-4 pl-5 sm:p-5 sm:pl-6 ${
+                        req.status === 'COMPLETED' ? 'opacity-70' : ''
+                      }`}
+                    >
+                      <span
+                        className={`absolute inset-y-0 left-0 w-1 ${URGENCY_ACCENT[req.urgency]}`}
+                      />
+
+                      {/* Meta row */}
+                      <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] ${urgency.badgeClass}`}>
                           {urgency.shortLabel}
                         </span>
-                        <span className="font-mono text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500">
                           {req.id}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${status.badgeClass}`}>
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${status.badgeClass}`}>
                           {status.label}
+                        </span>
+                        <span className="ml-auto flex items-center gap-1 text-[11px] text-slate-400">
+                          <Clock className="size-3" />
+                          {formatThaiDateTime(req.createdAt)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{formatThaiDateTime(req.createdAt)}</span>
-                      </div>
-                    </div>
+                      {/* Name + location */}
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+                        <div className="md:col-span-7">
+                          <h3 className="flex flex-wrap items-center gap-2 text-[15px] font-bold text-slate-900">
+                            {req.fullName}
+                            {req.people.bedridden > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                                <BedDouble className="size-3" />
+                                ผู้ป่วยติดเตียง {req.people.bedridden}
+                              </span>
+                            )}
+                          </h3>
 
-                    {/* Primary Contact & Location */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">
-                      <div className="md:col-span-7">
-                        <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                          <span>{req.fullName}</span>
-                          {req.people.bedridden > 0 && (
-                            <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-md font-bold border border-red-200">
-                              มีผู้ป่วยติดเตียง ({req.people.bedridden})
-                            </span>
-                          )}
-                        </h3>
-
-                        {/* Address & Landmark */}
-                        <div className="text-xs text-slate-600 mt-1 space-y-1">
-                          <p className="flex items-start gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                            <span className="font-medium">
+                          <p className="mt-1.5 flex items-start gap-1.5 text-[12px] leading-relaxed text-slate-600">
+                            <MapPin className="mt-0.5 size-3.5 shrink-0 text-rose-500" />
+                            <span>
                               {req.address} ต.{req.subDistrict || '-'} อ.{req.district} จ.{req.province}
                             </span>
                           </p>
+
                           {req.landmark && (
-                            <p className="text-slate-800 bg-amber-50/80 p-1.5 rounded-xl border border-amber-200/60 font-medium text-[11px]">
-                              🚩 จุดสังเกต: {req.landmark}
+                            <p className="mt-1.5 flex items-start gap-1.5 rounded-xl border border-amber-200/70 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
+                              <Flag className="mt-0.5 size-3 shrink-0 text-amber-500" />
+                              {req.landmark}
                             </p>
                           )}
                         </div>
-                      </div>
 
-                      {/* Water & Inhabitants summary */}
-                      <div className="md:col-span-5 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/70 text-xs flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-slate-500 text-[11px]">ระดับน้ำ:</span>
-                            <span className={`px-2 py-0.5 rounded-md font-bold border text-[11px] ${water.badgeColor}`}>
-                              {water.label}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-700 text-[11px]">
-                            <span className="text-slate-500">ผู้ประสบภัย:</span>
-                            <span className="font-semibold">
-                              ผู้ใหญ่ {req.people.adults} | คนแก่ {req.people.elderly} | เด็ก {req.people.children}
-                              {req.people.pets > 0 ? ` | สัตว์ ${req.people.pets}` : ''}
-                            </span>
+                        {/* Conditions summary */}
+                        <div className="md:col-span-5">
+                          <div className="h-full space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-[11px]">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-slate-500">ระดับน้ำ</span>
+                              <span className={`rounded-md border px-1.5 py-0.5 font-bold ${water.badgeColor}`}>
+                                {water.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 text-slate-600">
+                              <span className="text-slate-500">ผู้ติดค้าง</span>
+                              <span className="font-semibold text-slate-800">
+                                {totalPeople} คน
+                                {req.people.pets > 0 && ` (+${req.people.pets} สัตว์เลี้ยง)`}
+                              </span>
+                            </div>
+                            {req.people.children > 0 && (
+                              <div className="flex items-center justify-between gap-2 text-slate-600">
+                                <span className="text-slate-500">เด็กเล็ก</span>
+                                <span className="font-semibold text-slate-800">{req.people.children} คน</span>
+                              </div>
+                            )}
+                            {req.responderNotes && (
+                              <p className="truncate border-t border-slate-200 pt-1.5 font-medium text-sky-700">
+                                {req.responderNotes}
+                              </p>
+                            )}
                           </div>
                         </div>
-
-                        {req.responderNotes && (
-                          <div className="mt-2 pt-1 border-t border-slate-200 text-[11px] text-blue-700 font-medium truncate">
-                            🚑 {req.responderNotes}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Needs Badges */}
-                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                      {req.needs.map((need, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[11px] px-2 py-0.5 bg-slate-100/90 text-slate-700 rounded-md border border-slate-200/80"
-                        >
-                          • {need}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Notes if any */}
-                    {req.notes && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 mb-3 italic">
-                        "{req.notes}"
-                      </p>
-                    )}
-
-                    {/* Rescuer Quick Actions Bar */}
-                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {/* Direct Call Button */}
-                        <a
-                          href={`tel:${req.primaryPhone}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>โทร: {req.primaryPhone}</span>
-                        </a>
-
-                        {/* Google Maps Nav */}
-                        <a
-                          href={getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng)}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
-                        >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>นำทาง</span>
-                        </a>
-
-                        {/* Copy info */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(req, e)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium flex items-center gap-1 border border-slate-300 transition-colors"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>{copyStatusId === req.id ? 'คัดลอกแล้ว!' : 'คัดลอก'}</span>
-                        </button>
                       </div>
 
-                      {/* Status Toggle Buttons & Admin Delete */}
-                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        {req.status === 'PENDING' && (
-                          <button
-                            onClick={() => onUpdateStatus(req.id, 'RESPONDING', 'ทีมกู้ภัยรับเรื่องแล้ว กำลังเดินทางเข้าช่วยเหลือ')}
-                            className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs transition-all cursor-pointer"
-                          >
-                            รับเคส / ไปช่วย
-                          </button>
-                        )}
-                        {req.status === 'RESPONDING' && (
-                          <button
-                            onClick={() => onUpdateStatus(req.id, 'COMPLETED', 'ช่วยเหลือและส่งตัวยังศูนย์พักพิงเรียบร้อย')}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                          >
-                            ✓ ช่วยสำเร็จแล้ว
-                          </button>
-                        )}
-                        {req.status === 'COMPLETED' && (
-                          <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-xl border border-emerald-200">
-                            <CheckCircle className="w-3.5 h-3.5" /> สำเร็จแล้ว
-                          </span>
-                        )}
+                      {/* Needs */}
+                      {req.needs.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {req.needs.map((need, idx) => (
+                            <span
+                              key={idx}
+                              className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-600"
+                            >
+                              {need}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                        {isAdmin && onDeleteCase && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`คุณต้องการลบเคส "${req.fullName}" (รหัส: ${req.id}) ออกจากระบบหรือไม่?`)) {
-                                onDeleteCase(req.id);
-                              }
-                            }}
-                            title="ลบเคสนี้ออกจากระบบ (เฉพาะแอดมิน)"
-                            className="px-2 py-1 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 border border-red-200 cursor-pointer ml-1"
+                      {req.notes && (
+                        <p className="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[12px] italic text-slate-600">
+                          {req.notes}
+                        </p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <a
+                            href={`tel:${req.primaryPhone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>ลบ</span>
+                            <Phone className="size-3.5" />
+                            <span className="hidden sm:inline">โทร</span>
+                            {req.primaryPhone}
+                          </a>
+
+                          <a
+                            href={getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-slate-800"
+                          >
+                            <Navigation className="size-3.5" />
+                            นำทาง
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopy(req, e)}
+                            title="คัดลอกข้อมูลเคส"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900"
+                          >
+                            {copyStatusId === req.id ? (
+                              <>
+                                <CheckCircle2 className="size-3.5 text-emerald-600" />
+                                คัดลอกแล้ว
+                              </>
+                            ) : (
+                              <>
+                                <Share2 className="size-3.5" />
+                                คัดลอก
+                              </>
+                            )}
                           </button>
-                        )}
+                        </div>
+
+                        <div className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {req.status === 'PENDING' && (
+                            <button
+                              onClick={() => onUpdateStatus(req.id, 'RESPONDING', 'ทีมกู้ภัยรับเรื่องแล้ว กำลังเดินทางเข้าช่วยเหลือ')}
+                              className="rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-900 transition-colors hover:bg-amber-500"
+                            >
+                              รับเคส / ไปช่วย
+                            </button>
+                          )}
+                          {req.status === 'RESPONDING' && (
+                            <button
+                              onClick={() => onUpdateStatus(req.id, 'COMPLETED', 'ช่วยเหลือและส่งตัวยังศูนย์พักพิงเรียบร้อย')}
+                              className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
+                            >
+                              ช่วยสำเร็จแล้ว
+                            </button>
+                          )}
+                          {req.status === 'COMPLETED' && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700">
+                              <CheckCircle className="size-3.5" />
+                              สำเร็จแล้ว
+                            </span>
+                          )}
+
+                          {isAdmin && onDeleteCase && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`คุณต้องการลบเคส "${req.fullName}" (รหัส: ${req.id}) ออกจากระบบหรือไม่?`)) {
+                                  onDeleteCase(req.id);
+                                }
+                              }}
+                              title="ลบเคสนี้ (เฉพาะแอดมิน)"
+                              className="grid size-7 place-items-center rounded-full border border-rose-200 bg-white text-rose-600 transition-colors hover:bg-rose-600 hover:text-white"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-
-                  </div>
+                    </article>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </>
       )}
-
     </div>
   );
 };

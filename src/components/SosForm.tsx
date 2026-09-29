@@ -1,20 +1,25 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  MapPin, 
-  AlertOctagon, 
-  Phone, 
-  Users, 
-  Package, 
-  CheckCircle2, 
-  Camera, 
+import {
+  MapPin,
+  AlertOctagon,
+  Phone,
+  CheckCircle2,
+  Camera,
   AlertCircle,
   Loader2,
   Navigation,
-  Sparkles,
   Info,
-  Clock,
   Home,
-  ShieldAlert
+  Building2,
+  Waves,
+  Footprints,
+  ShieldOff,
+  ShieldAlert,
+  Minus,
+  Plus,
+  UserRound,
+  OctagonAlert,
+  type LucideIcon
 } from 'lucide-react';
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
@@ -27,15 +32,89 @@ interface SosFormProps {
   onOpenUserAuth?: () => void;
 }
 
-export const SosForm: React.FC<SosFormProps> = ({ 
-  onSubmitSuccess, 
-  currentUser, 
-  onOpenUserAuth 
+const URGENCY_OPTIONS: {
+  id: UrgencyLevel;
+  title: string;
+  headline: string;
+  hint: string;
+  icon: LucideIcon;
+  active: string;
+  idle: string;
+}[] = [
+  {
+    id: 'CRITICAL',
+    title: 'วิกฤตสีแดง',
+    headline: 'อันตรายถึงชีวิต',
+    hint: 'ติดบนหลังคา, ผู้ป่วยติดเตียง, เด็กทารก, น้ำมิดชั้น 1',
+    icon: OctagonAlert,
+    active: 'border-rose-500 bg-rose-50 ring-2 ring-rose-200/70 text-rose-700',
+    idle: 'border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50/40 text-slate-700'
+  },
+  {
+    id: 'URGENT',
+    title: 'เร่งด่วนสีเหลือง',
+    headline: 'ต้องการเรืออพยพ',
+    hint: 'น้ำเข้าบ้านระดับเอว-อก, ไฟฟ้าถูกตัด, เสบียงหมด',
+    icon: AlertOctagon,
+    active: 'border-amber-500 bg-amber-50 ring-2 ring-amber-200/70 text-amber-800',
+    idle: 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/40 text-slate-700'
+  },
+  {
+    id: 'NORMAL',
+    title: 'ทั่วไปสีเขียว',
+    headline: 'ยังปลอดภัยในบ้าน',
+    hint: 'ขอถุงยังชีพ, น้ำดื่มสะอาด, ยาสามัญ, อาหารสัตว์',
+    icon: Info,
+    active: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200/70 text-emerald-800',
+    idle: 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40 text-slate-700'
+  }
+];
+
+const WATER_OPTIONS: { id: WaterLevel; label: string; icon: LucideIcon }[] = [
+  { id: 'ROOF_TOP', label: 'บนหลังคา / ดาดฟ้า', icon: Home },
+  { id: 'SECOND_FLOOR', label: 'ท่วมชั้น 1 (อยู่ชั้น 2)', icon: Building2 },
+  { id: 'WAIST_CHEST', label: 'ระดับเอว - หน้าอก', icon: Waves },
+  { id: 'ANKLE_KNEE', label: 'ระดับข้อเท้า - เข่า', icon: Footprints },
+  { id: 'SURROUNDED', label: 'ถูกน้ำล้อมรอบ/ตัดขาด', icon: ShieldOff }
+];
+
+const PEOPLE_FIELDS: { key: keyof PeopleCount; label: string; critical?: boolean }[] = [
+  { key: 'adults', label: 'ผู้ใหญ่' },
+  { key: 'elderly', label: 'ผู้สูงอายุ' },
+  { key: 'bedridden', label: 'ผู้ป่วยติดเตียง', critical: true },
+  { key: 'children', label: 'เด็กเล็ก/ทารก' },
+  { key: 'pets', label: 'สัตว์เลี้ยง' }
+];
+
+const SectionHeading: React.FC<{ step: number; title: string; required?: boolean; hint?: string }> = ({
+  step,
+  title,
+  required,
+  hint
+}) => (
+  <div className="mb-4 flex items-start gap-3">
+    <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-xl bg-slate-900 text-xs font-bold text-white tabular-nums">
+      {step}
+    </span>
+    <div className="min-w-0">
+      <h2 className="text-[15px] font-bold leading-tight text-slate-900">
+        {title}
+        {required && <span className="ml-1 text-rose-500">*</span>}
+      </h2>
+      {hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{hint}</p>}
+    </div>
+  </div>
+);
+
+export const SosForm: React.FC<SosFormProps> = ({
+  onSubmitSuccess,
+  currentUser,
+  onOpenUserAuth
 }) => {
   // Form State
   const [urgency, setUrgency] = useState<UrgencyLevel>('CRITICAL');
   const [waterLevel, setWaterLevel] = useState<WaterLevel>('SECOND_FLOOR');
-  
+
   // Geolocation
   const [coords, setCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
@@ -61,7 +140,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   const [primaryPhone, setPrimaryPhone] = useState<string>('');
   const [secondaryPhone, setSecondaryPhone] = useState<string>('');
   const [lineId, setLineId] = useState<string>('');
-  
+
   const [province, setProvince] = useState<string>('');
   const [district, setDistrict] = useState<string>('');
   const [subDistrict, setSubDistrict] = useState<string>('');
@@ -70,6 +149,14 @@ export const SosForm: React.FC<SosFormProps> = ({
   const availableProvinces = useMemo(() => getProvinces(), []);
   const availableDistricts = useMemo(() => getDistricts(province), [province]);
   const availableSubDistricts = useMemo(() => getSubDistricts(province, district), [province, district]);
+
+  const [address, setAddress] = useState<string>('');
+  const [landmark, setLandmark] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [imagePreview, setImagePreview] = useState<string>('');
+
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const handleProvinceChange = (newProvince: string) => {
     setProvince(newProvince);
@@ -91,14 +178,6 @@ export const SosForm: React.FC<SosFormProps> = ({
   const handleSubDistrictChange = (newSubDistrict: string) => {
     setSubDistrict(newSubDistrict);
   };
-
-  const [address, setAddress] = useState<string>('');
-  const [landmark, setLandmark] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [imagePreview, setImagePreview] = useState<string>('');
-
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Auto-fill contact info if currentUser is logged in
   useEffect(() => {
@@ -276,232 +355,166 @@ export const SosForm: React.FC<SosFormProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-5 sm:py-8">
-      
-      {/* Modern, Reassuring Hero Card */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200/60 mb-2">
-          <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-          <span>ระบบรับแจ้งเหตุฉุกเฉินน้ำท่วม 24 ชม.</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          แจ้งขอความช่วยเหลือ (SOS)
+    <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+
+      {/* Hero */}
+      <header className="mb-6 text-center">
+        <span className="inline-flex items-center gap-2 rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700">
+          <span className="size-1.5 animate-sos-pulse rounded-full bg-rose-600" />
+          รับแจ้งเหตุฉุกเฉินน้ำท่วม 24 ชม.
+        </span>
+        <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-[28px]">
+          แจ้งขอความช่วยเหลือ
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-          กรอกข้อมูลสำคัญเบื้องต้น เพื่อให้ทีมกู้ภัยและจิตอาสาเข้าถึงจุดเกิดเหตุได้อย่างรวดเร็วและแม่นยำ
+        <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-slate-500">
+          กรอกข้อมูลเบื้องต้น 4 ขั้นตอน เพื่อให้ทีมกู้ภัยเข้าถึงจุดเกิดเหตุได้เร็วและแม่นยำที่สุด
         </p>
-      </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-        
-        {/* Card 1: ระดับความเร่งด่วน & ระดับน้ำ */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl bg-red-50 text-red-600 flex items-center justify-center font-bold text-xs">
-              1
-            </div>
-            <h2 className="text-base font-bold text-slate-900">
-              ระดับความเร่งด่วน & สภาพน้ำ <span className="text-red-500">*</span>
-            </h2>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Clean 3 Urgency Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-            
-            {/* Critical */}
-            <div
-              onClick={() => setUrgency('CRITICAL')}
-              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
-                urgency === 'CRITICAL'
-                  ? 'border-red-600 bg-red-50/70 shadow-xs ring-2 ring-red-200'
-                  : 'border-slate-200/90 bg-slate-50/50 hover:border-red-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-extrabold text-xs text-red-700 flex items-center gap-1">
-                  🔴 วิกฤตสีแดง
-                </span>
-                {urgency === 'CRITICAL' && <CheckCircle2 className="w-4 h-4 text-red-600 shrink-0" />}
-              </div>
-              <div className="font-bold text-slate-900 text-xs sm:text-sm">อันตรายถึงชีวิต</div>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                ติดบนหลังคา, ผู้ป่วยติดเตียง, เด็กทารก, น้ำมิดชั้น 1
-              </p>
-            </div>
+        {/* 1 — Urgency & water level */}
+        <section className="surface p-5 sm:p-6">
+          <SectionHeading step={1} title="ระดับความเร่งด่วน & สภาพน้ำ" required />
 
-            {/* Urgent */}
-            <div
-              onClick={() => setUrgency('URGENT')}
-              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
-                urgency === 'URGENT'
-                  ? 'border-amber-500 bg-amber-50/70 shadow-xs ring-2 ring-amber-200'
-                  : 'border-slate-200/90 bg-slate-50/50 hover:border-amber-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-extrabold text-xs text-amber-800 flex items-center gap-1">
-                  🟡 เร่งด่วน
-                </span>
-                {urgency === 'URGENT' && <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />}
-              </div>
-              <div className="font-bold text-slate-900 text-xs sm:text-sm">ต้องการเรืออพยพ</div>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                น้ำเข้าบ้านระดับเอว-อก, ไฟฟ้าถูกตัด, เสบียงหมด
-              </p>
-            </div>
-
-            {/* Normal */}
-            <div
-              onClick={() => setUrgency('NORMAL')}
-              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer ${
-                urgency === 'NORMAL'
-                  ? 'border-emerald-600 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-200'
-                  : 'border-slate-200/90 bg-slate-50/50 hover:border-emerald-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-extrabold text-xs text-emerald-800 flex items-center gap-1">
-                  🟢 ขอรับเสบียง
-                </span>
-                {urgency === 'NORMAL' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-              </div>
-              <div className="font-bold text-slate-900 text-xs sm:text-sm">ยังปลอดภัยในบ้าน</div>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                ขอถุงยังชีพ, น้ำดื่มสะอาด, ยาสามัญ, อาหารสัตว์
-              </p>
-            </div>
-          </div>
-
-          {/* Compact Water Level Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              ระดับน้ำปัจจุบันรอบตัวคุณ
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {[
-                { id: 'ROOF_TOP' as WaterLevel, label: '🏠 บนหลังคา / ดาดฟ้า' },
-                { id: 'SECOND_FLOOR' as WaterLevel, label: '⬆️ ท่วมมิดชั้น 1 (อยู่ชั้น 2)' },
-                { id: 'WAIST_CHEST' as WaterLevel, label: '🌊 ระดับเอว - หน้าอก' },
-                { id: 'ANKLE_KNEE' as WaterLevel, label: '🚶 ระดับข้อเท้า - หัวเข่า' },
-                { id: 'SURROUNDED' as WaterLevel, label: '🏝️ น้ำล้อมรอบ/ตัดขาด' },
-              ].map(item => (
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {URGENCY_OPTIONS.map(({ id, title, headline, hint, icon: Icon, active, idle }) => {
+              const isSelected = urgency === id;
+              return (
                 <button
-                  key={item.id}
+                  key={id}
                   type="button"
-                  onClick={() => setWaterLevel(item.id)}
-                  className={`py-2 px-3 rounded-xl border text-left text-xs font-medium transition-all ${
-                    waterLevel === item.id
-                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-bold shadow-xs'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  }`}
+                  onClick={() => setUrgency(id)}
+                  aria-pressed={isSelected}
+                  className={`rounded-2xl border p-3.5 text-left transition-all duration-200 ${isSelected ? active : idle}`}
                 >
-                  {item.label}
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide">
+                      <Icon className="size-3.5" strokeWidth={2.5} />
+                      {title}
+                    </span>
+                    {isSelected && <CheckCircle2 className="size-4 shrink-0 opacity-80" />}
+                  </div>
+                  <div className="text-[13px] font-bold text-slate-900">{headline}</div>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-500">{hint}</p>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-        </div>
-
-        {/* Card 2: ตำแหน่ง & พิกัด GPS */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-              2
+          <div className="mt-5">
+            <span className="label">ระดับน้ำปัจจุบันรอบตัวคุณ</span>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {WATER_OPTIONS.map(({ id, label, icon: Icon }) => {
+                const isSelected = waterLevel === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setWaterLevel(id)}
+                    aria-pressed={isSelected}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12px] font-medium transition-all duration-200 ${
+                      isSelected
+                        ? 'border-sky-400 bg-sky-50 font-bold text-sky-800 ring-2 ring-sky-100'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Icon className={`size-4 shrink-0 ${isSelected ? 'text-sky-600' : 'text-slate-400'}`} />
+                    <span className="leading-tight">{label}</span>
+                  </button>
+                );
+              })}
             </div>
-            <h2 className="text-base font-bold text-slate-900">
-              พิกัด GPS & ที่อยู่ <span className="text-red-500">*</span>
-            </h2>
           </div>
+        </section>
 
-          {/* Sleek One-Tap GPS Button */}
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={handleGetGPS}
-              disabled={gpsLoading}
-              className={`w-full py-3 px-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer text-xs sm:text-sm ${
-                coords 
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 active:scale-98'
-              }`}
-            >
-              {gpsLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>กำลังค้นหาสัญญาณดาวเทียม GPS...</span>
-                </>
-              ) : coords ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>บันทึกพิกัดแล้ว ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}) — แตะเพื่ออัปเดตใหม่</span>
-                </>
-              ) : (
-                <>
-                  <Navigation className="w-4 h-4" />
-                  <span>📍 แตะเพื่อดึงพิกัด GPS อัตโนมัติ (ช่วยกู้ภัยตรงจุด)</span>
-                </>
-              )}
-            </button>
+        {/* 2 — Location */}
+        <section className="surface p-5 sm:p-6">
+          <SectionHeading
+            step={2}
+            title="พิกัด GPS & ที่อยู่"
+            required
+            hint="ยิ่งชัดเจนเท่าไร ทีมกู้ภัยยิ่งเข้าถึงคุณได้เร็ว"
+          />
 
-            {gpsError && (
-              <p className="mt-1.5 text-[11px] text-red-600 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{gpsError}</span>
-              </p>
+          <button
+            type="button"
+            onClick={handleGetGPS}
+            disabled={gpsLoading}
+            className={`mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[13px] font-bold transition-all duration-200 active:scale-[0.99] ${
+              coords
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-transparent bg-slate-900 text-white shadow-[0_10px_26px_-14px_rgba(15,23,42,0.8)] hover:bg-slate-800'
+            }`}
+          >
+            {gpsLoading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                กำลังค้นหาสัญญาณ GPS...
+              </>
+            ) : coords ? (
+              <>
+                <CheckCircle2 className="size-4 text-emerald-600" />
+                บันทึกพิกัดแล้ว ({coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}) — แตะเพื่ออัปเดต
+              </>
+            ) : (
+              <>
+                <Navigation className="size-4" />
+                แตะเพื่อดึงพิกัด GPS อัตโนมัติ
+              </>
             )}
-          </div>
+          </button>
 
-          {/* Cascading Dropdowns: Province -> District -> Sub-district */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+          {gpsError && (
+            <p className="mb-4 flex items-start gap-1.5 text-[11px] text-rose-600">
+              <AlertCircle className="mt-px size-3.5 shrink-0" />
+              <span>{gpsError}</span>
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                จังหวัด <span className="text-red-500">*</span>
-              </label>
+              <span className="label">
+                จังหวัด <span className="text-rose-500">*</span>
+              </span>
               <select
                 value={province}
                 onChange={(e) => handleProvinceChange(e.target.value)}
-                className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 cursor-pointer font-medium ${
-                  formErrors.province ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:ring-blue-400'
-                }`}
+                className={`field ${formErrors.province ? 'field-invalid' : ''}`}
               >
                 <option value="">-- เลือกจังหวัด --</option>
                 {availableProvinces.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
-              {formErrors.province && <p className="text-[10px] text-red-600 mt-0.5">{formErrors.province}</p>}
+              {formErrors.province && <p className="mt-1 text-[10px] text-rose-600">{formErrors.province}</p>}
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                อำเภอ <span className="text-red-500">*</span>
-              </label>
+              <span className="label">
+                อำเภอ <span className="text-rose-500">*</span>
+              </span>
               <select
                 value={district}
                 disabled={!province}
                 onChange={(e) => handleDistrictChange(e.target.value)}
-                className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 cursor-pointer font-medium disabled:bg-slate-100 disabled:text-slate-400 ${
-                  formErrors.district ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:ring-blue-400'
-                }`}
+                className={`field ${formErrors.district ? 'field-invalid' : ''}`}
               >
                 <option value="">{province ? '-- เลือกอำเภอ --' : '-- รอเลือกจังหวัด --'}</option>
                 {availableDistricts.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
-              {formErrors.district && <p className="text-[10px] text-red-600 mt-0.5">{formErrors.district}</p>}
+              {formErrors.district && <p className="mt-1 text-[10px] text-rose-600">{formErrors.district}</p>}
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                ตำบล / แขวง
-              </label>
+              <span className="label">ตำบล / แขวง</span>
               <select
                 value={subDistrict}
                 disabled={!district}
                 onChange={(e) => handleSubDistrictChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer font-medium disabled:bg-slate-100 disabled:text-slate-400"
+                className="field"
               >
                 <option value="">{district ? '-- เลือกตำบล --' : '-- รอเลือกอำเภอ --'}</option>
                 {availableSubDistricts.map((s) => (
@@ -511,151 +524,83 @@ export const SosForm: React.FC<SosFormProps> = ({
             </div>
           </div>
 
-          {/* Address & Landmark */}
-          <div className="space-y-2.5">
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                บ้านเลขที่ / หมู่ / ซอย / ถนน
-              </label>
+              <span className="label">บ้านเลขที่ / หมู่ / ซอย / ถนน</span>
               <input
                 type="text"
                 placeholder="เช่น 123/4 หมู่ 5 ซอยริมน้ำ 3"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="field"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                🚩 จุดสังเกตเด่น (สำคัญมากเมื่อป้ายบ้านจมน้ำ) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="เช่น บ้านไม้ 2 ชั้น รั้วสีฟ้า ติดวัดเกาะทราย มีผูกธงสีส้มตรงระเบียง"
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                  formErrors.address ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:ring-blue-400'
+              <span className="label">
+                จุดสังเกตเด่น (สำคัญมากเมื่อป้ายบ้านจมน้ำ) <span className="text-rose-500">*</span>
+              </span>
+              <div className="relative">
+                <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-amber-500" />
+                <input
+                  type="text"
+                  placeholder="เช่น บ้านไม้ 2 ชั้น รั้วสีฟ้า ติดวัดเกาะทราย"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                  className={`field pl-9 ${formErrors.address ? 'field-invalid' : ''}`}
+                />
+              </div>
+              {formErrors.address && <p className="mt-1 text-[10px] text-rose-600">{formErrors.address}</p>}
+            </div>
+          </div>
+        </section>
+
+        {/* 3 — People & needs */}
+        <section className="surface p-5 sm:p-6">
+          <SectionHeading step={3} title="ผู้ติดค้าง & สิ่งที่ต้องการ" />
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {PEOPLE_FIELDS.map(({ key, label, critical }) => (
+              <div
+                key={key}
+                className={`flex items-center justify-between gap-1 rounded-2xl border p-2 ${
+                  critical ? 'border-rose-200 bg-rose-50/70' : 'border-slate-200 bg-slate-50/60'
                 }`}
-              />
-              {formErrors.address && <p className="text-[10px] text-red-600 mt-0.5">{formErrors.address}</p>}
-            </div>
+              >
+                <span className={`text-[11px] font-semibold leading-tight ${critical ? 'text-rose-700' : 'text-slate-600'}`}>
+                  {label}
+                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => updatePeople(key, -1)}
+                    aria-label={`ลด${label}`}
+                    className={`grid size-6 place-items-center rounded-lg border bg-white transition-colors active:scale-95 ${
+                      critical ? 'border-rose-200 text-rose-600' : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <Minus className="size-3" strokeWidth={3} />
+                  </button>
+                  <span className={`w-4 text-center text-[13px] font-bold tabular-nums ${critical ? 'text-rose-700' : 'text-slate-900'}`}>
+                    {people[key]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updatePeople(key, 1)}
+                    aria-label={`เพิ่ม${label}`}
+                    className={`grid size-6 place-items-center rounded-lg border bg-white transition-colors active:scale-95 ${
+                      critical ? 'border-rose-200 text-rose-600' : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <Plus className="size-3" strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
-        </div>
-
-        {/* Card 3: สมาชิกติดค้าง & สิ่งที่ต้องการ */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
-              3
-            </div>
-            <h2 className="text-base font-bold text-slate-900">
-              ผู้ติดค้าง & สิ่งที่ต้องการ
-            </h2>
-          </div>
-
-          {/* Compact Stepper Counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-            
-            {/* Adults */}
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">ผู้ใหญ่</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePeople('adults', -1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >-</button>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 w-4 text-center">{people.adults}</span>
-                <button
-                  type="button"
-                  onClick={() => updatePeople('adults', 1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >+</button>
-              </div>
-            </div>
-
-            {/* Elderly */}
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">ผู้สูงอายุ</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePeople('elderly', -1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >-</button>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 w-4 text-center">{people.elderly}</span>
-                <button
-                  type="button"
-                  onClick={() => updatePeople('elderly', 1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >+</button>
-              </div>
-            </div>
-
-            {/* Bedridden (Critical Highlight) */}
-            <div className="bg-red-50/80 p-2.5 rounded-2xl border border-red-200 flex items-center justify-between">
-              <span className="text-xs font-bold text-red-700">ผู้ป่วยติดเตียง</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePeople('bedridden', -1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-red-300 text-red-700 font-bold active:bg-red-100 flex items-center justify-center text-xs"
-                >-</button>
-                <span className="font-bold text-xs sm:text-sm text-red-700 w-4 text-center">{people.bedridden}</span>
-                <button
-                  type="button"
-                  onClick={() => updatePeople('bedridden', 1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-red-300 text-red-700 font-bold active:bg-red-100 flex items-center justify-center text-xs"
-                >+</button>
-              </div>
-            </div>
-
-            {/* Children */}
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">เด็กเล็ก/ทารก</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePeople('children', -1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >-</button>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 w-4 text-center">{people.children}</span>
-                <button
-                  type="button"
-                  onClick={() => updatePeople('children', 1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >+</button>
-              </div>
-            </div>
-
-            {/* Pets */}
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-700">สัตว์เลี้ยง</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => updatePeople('pets', -1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >-</button>
-                <span className="font-bold text-xs sm:text-sm text-slate-900 w-4 text-center">{people.pets}</span>
-                <button
-                  type="button"
-                  onClick={() => updatePeople('pets', 1)}
-                  className="w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold active:bg-slate-200 flex items-center justify-center text-xs"
-                >+</button>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Urgent Needs Pills */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              สิ่งของหรือความช่วยเหลือที่ต้องการ (เลือกได้หลายข้อ)
-            </label>
+          <div className="mt-5">
+            <span className="label">สิ่งของหรือความช่วยเหลือที่ต้องการ (เลือกได้หลายข้อ)</span>
             <div className="flex flex-wrap gap-1.5">
               {COMMON_NEEDS_LIST.map((need) => {
                 const isSelected = selectedNeeds.includes(need);
@@ -664,207 +609,180 @@ export const SosForm: React.FC<SosFormProps> = ({
                     key={need}
                     type="button"
                     onClick={() => toggleNeed(need)}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                    aria-pressed={isSelected}
+                    className={`chip ${
                       isSelected
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold shadow-xs'
-                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : 'chip-idle'
                     }`}
                   >
+                    {isSelected ? <CheckCircle2 className="size-3.5 text-emerald-600" /> : <Plus className="size-3.5 text-slate-400" />}
                     <span>{need}</span>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
                   </button>
                 );
               })}
             </div>
           </div>
+        </section>
 
-        </div>
+        {/* 4 — Contact */}
+        <section className="surface p-5 sm:p-6">
+          <SectionHeading step={4} title="ข้อมูลติดต่อผู้แจ้ง" required />
 
-        {/* Card 4: ข้อมูลติดต่อผู้แจ้ง */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">
-              4
-            </div>
-            <h2 className="text-base font-bold text-slate-900">
-              ข้อมูลติดต่อผู้แจ้ง <span className="text-red-500">*</span>
-            </h2>
-          </div>
-
-          {/* Account status info banner */}
           {currentUser ? (
-            <div className="mb-3.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  กรอกข้อมูลอัตโนมัติจากบัญชี: <b>คุณ{currentUser.firstName} {currentUser.lastName}</b> ({formatPhone(currentUser.phone)})
-                </span>
-              </div>
+            <div className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-200/80 bg-emerald-50 px-3 py-2.5 text-[11px] text-emerald-900">
+              <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+              <span>
+                กรอกข้อมูลอัตโนมัติจากบัญชี <b>{currentUser.firstName} {currentUser.lastName}</b> ({formatPhone(currentUser.phone)})
+              </span>
             </div>
           ) : (
             onOpenUserAuth && (
-              <div className="mb-3.5 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-600 leading-tight">
-                  💡 <b>แนะนำ:</b> เข้าสู่ระบบด้วย LINE หรือยืนยันเบอร์ OTP เพื่อเพิ่มความน่าเชื่อถือของเคส และให้ทีมกู้ภัยติดต่อกลับได้สะดวกรวดเร็ว
+              <div className="mb-4 flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[11px] leading-snug text-slate-600">
+                  เข้าสู่ระบบด้วย LINE หรือ OTP เพื่อเพิ่มความน่าเชื่อถือของเคส
                 </span>
                 <button
                   type="button"
                   onClick={onOpenUserAuth}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-bold hover:text-emerald-700 text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs flex items-center gap-1"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:border-emerald-300 hover:text-emerald-700"
                 >
-                  <span>เข้าสู่ระบบ (LINE / OTP) ↗</span>
+                  <UserRound className="size-3.5" />
+                  เข้าสู่ระบบ (LINE / OTP)
                 </button>
               </div>
             )
           )}
 
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  ชื่อ-นามสกุล หรือชื่อเล่น <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น สมศักดิ์ วงศ์สว่าง (ลุงศักดิ์)"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                    formErrors.fullName ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:ring-purple-400'
-                  }`}
-                />
-                {formErrors.fullName && <p className="text-[10px] text-red-600 mt-0.5">{formErrors.fullName}</p>}
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  เบอร์โทรศัพท์หลัก <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    placeholder="08X-XXX-XXXX"
-                    value={primaryPhone}
-                    onChange={(e) => setPrimaryPhone(e.target.value)}
-                    className={`w-full pl-8 pr-3 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      formErrors.primaryPhone ? 'border-red-400 bg-red-50' : 'border-slate-300 focus:ring-purple-400'
-                    }`}
-                  />
-                  <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                </div>
-                {formErrors.primaryPhone && <p className="text-[10px] text-red-600 mt-0.5">{formErrors.primaryPhone}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  เบอร์โทรสำรอง (ถ้ามี)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น 09X-XXX-XXXX (เบอร์ญาติ)"
-                  value={secondaryPhone}
-                  onChange={(e) => setSecondaryPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  LINE ID (ถ้ามี)
-                </label>
-                <input
-                  type="text"
-                  placeholder="เช่น line_id_123"
-                  value={lineId}
-                  onChange={(e) => setLineId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                />
-              </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <span className="label">
+                ชื่อ-นามสกุล หรือชื่อเล่น <span className="text-rose-500">*</span>
+              </span>
+              <input
+                type="text"
+                placeholder="เช่น สมศักดิ์ วงศ์สว่าง"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className={`field ${formErrors.fullName ? 'field-invalid' : ''}`}
+              />
+              {formErrors.fullName && <p className="mt-1 text-[10px] text-rose-600">{formErrors.fullName}</p>}
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                รายละเอียดสถานการณ์เพิ่มเติม (ถ้ามี)
-              </label>
-              <textarea
-                rows={2}
-                placeholder="เช่น แบตเตอรี่โทรศัพท์ใกล้หมด, ไฟฟ้าถูกตัด, น้ำกำลังไหลแรงมาก"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              <span className="label">
+                เบอร์โทรศัพท์หลัก <span className="text-rose-500">*</span>
+              </span>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="tel"
+                  placeholder="08X-XXX-XXXX"
+                  value={primaryPhone}
+                  onChange={(e) => setPrimaryPhone(e.target.value)}
+                  className={`field pl-9 ${formErrors.primaryPhone ? 'field-invalid' : ''}`}
+                />
+              </div>
+              {formErrors.primaryPhone && <p className="mt-1 text-[10px] text-rose-600">{formErrors.primaryPhone}</p>}
+            </div>
+
+            <div>
+              <span className="label">เบอร์โทรสำรอง (ถ้ามี)</span>
+              <input
+                type="text"
+                placeholder="เช่น 09X-XXX-XXXX (เบอร์ญาติ)"
+                value={secondaryPhone}
+                onChange={(e) => setSecondaryPhone(e.target.value)}
+                className="field"
               />
             </div>
 
-            {/* Photo upload */}
             <div>
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors">
-                  <Camera className="w-4 h-4 text-slate-500" />
-                  <span>แนบภาพถ่ายสถานที่ (ถ้ามี)</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </label>
-                {imagePreview && (
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={imagePreview}
-                      alt="พรีวิว"
-                      className="w-10 h-10 rounded-xl object-cover border border-slate-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setImagePreview('')}
-                      className="text-xs text-red-600 hover:underline"
-                    >
-                      ลบรูป
-                    </button>
-                  </div>
-                )}
-              </div>
+              <span className="label">LINE ID (ถ้ามี)</span>
+              <input
+                type="text"
+                placeholder="เช่น line_id_123"
+                value={lineId}
+                onChange={(e) => setLineId(e.target.value)}
+                className="field"
+              />
             </div>
           </div>
-        </div>
 
-        {/* Security & Legal Warning Notice */}
-        <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-900 shadow-xs mb-3">
-          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-[11px] leading-relaxed">
-            <span className="font-bold">ระบบรักษาความปลอดภัย & กฎหมาย:</span> ข้อมูลนี้จะส่งตรงถึงทีมกู้ภัยเพื่อจัดสรรเรือและกำลังพล 
-            <span className="text-amber-800"> การแจ้งเหตุเท็จหรือกดเล่นมีความผิดตามประมวลกฎหมายอาญา มาตรา 137 และ พ.ร.บ.คอมพิวเตอร์ ระบบบันทึกข้อมูลและพิกัดเพื่อความปลอดภัย</span>
+          <div className="mt-3">
+            <span className="label">รายละเอียดสถานการณ์เพิ่มเติม (ถ้ามี)</span>
+            <textarea
+              rows={2}
+              placeholder="เช่น แบตเตอรี่โทรศัพท์ใกล้หมด, ไฟฟ้าถูกตัด, น้ำกำลังไหลแรงมาก"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="field resize-none"
+            />
           </div>
-        </div>
 
-        {/* Floating / Sticky Submit Button */}
-        <div className="sticky bottom-4 z-40 bg-white/90 p-3 rounded-3xl border border-slate-200/80 shadow-xl backdrop-blur-md">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900">
+              <Camera className="size-4 text-slate-400" />
+              แนบภาพถ่ายสถานที่ (ถ้ามี)
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+            {imagePreview && (
+              <div className="flex items-center gap-2">
+                <img
+                  src={imagePreview}
+                  alt="พรีวิว"
+                  className="size-10 rounded-xl border border-slate-200 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImagePreview('')}
+                  className="text-[11px] font-semibold text-rose-600 transition-colors hover:text-rose-700"
+                >
+                  ลบรูป
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Legal notice */}
+        <p className="flex items-start gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-3 text-[11px] leading-relaxed text-amber-900">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <span>
+            <b>ระบบรักษาความปลอดภัย & กฎหมาย:</b> ข้อมูลนี้จะส่งตรงถึงทีมกู้ภัยเพื่อจัดสรรเรือและกำลังพล
+            การแจ้งเหตุเท็จหรือกดเล่นมีความผิดตามประมวลกฎหมายอาญา มาตรา 137 และ พ.ร.บ.คอมพิวเตอร์
+          </span>
+        </p>
+
+        {/* Sticky submit */}
+        <div className="sticky bottom-24 z-30 rounded-3xl border border-slate-200/80 bg-white/85 p-2.5 shadow-[var(--shadow-lift)] backdrop-blur-xl sm:bottom-4">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 active:scale-98 text-white font-extrabold text-base sm:text-lg shadow-lg shadow-red-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 px-6 py-3.5 text-[15px] font-extrabold text-white shadow-[0_14px_30px_-14px_rgba(225,29,72,0.85)] transition-all hover:from-rose-700 hover:to-red-700 active:scale-[0.99] disabled:opacity-70 sm:text-base"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>กำลังส่งข้อมูลแจ้งเหตุ...</span>
+                <Loader2 className="size-5 animate-spin" />
+                กำลังส่งข้อมูลแจ้งเหตุ...
               </>
             ) : (
               <>
-                <AlertOctagon className="w-5 h-5" />
-                <span>🚨 ส่งข้อมูลแจ้งขอความช่วยเหลือ (SOS)</span>
+                <AlertOctagon className="size-5" />
+                ส่งข้อมูลแจ้งขอความช่วยเหลือ (SOS)
               </>
             )}
           </button>
-          <p className="text-[11px] text-center text-slate-500 mt-1.5">
-            ส่งข้อมูลแล้ว ระบบจะสร้างรหัสเคส พร้อมปุ่มส่ง SMS และแชร์เข้า LINE กู้ภัยได้ทันที
+          <p className="mt-1.5 text-center text-[10px] text-slate-400">
+            ส่งแล้วระบบจะสร้างรหัสเคส พร้อมปุ่มส่ง SMS และแชร์เข้า LINE กู้ภัยได้ทันที
           </p>
         </div>
-
       </form>
     </div>
   );

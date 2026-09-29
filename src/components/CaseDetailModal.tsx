@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   MapPin, 
@@ -17,7 +17,11 @@ import {
   Trash2,
   Lock,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  CloudRain,
+  Sparkles,
+  TrendingUp,
+  Droplets
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { 
@@ -28,6 +32,8 @@ import {
   getGoogleMapsUrl 
 } from '../utils/formatters';
 import { buildSosShareText, copyToClipboard, getLineShareUrl, getSmsLink } from '../utils/shareHelpers';
+import { getWeatherNext3Forecast } from '../services/weatherAiService';
+import { maskPhone } from '../utils/privacy';
 
 interface CaseDetailModalProps {
   request: SOSRequest | null;
@@ -59,6 +65,11 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
   const currentStatus = getStatusInfo(request.status);
   const mapsUrl = getGoogleMapsUrl(request.coordinates.lat, request.coordinates.lng);
   const shareText = buildSosShareText(request);
+
+  // WeatherNext 3 AI Forecast & Flood Hazard Analytics
+  const weather = useMemo(() => {
+    return getWeatherNext3Forecast(request.coordinates.lat, request.coordinates.lng, request.province);
+  }, [request.coordinates.lat, request.coordinates.lng, request.province]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(shareText);
@@ -117,10 +128,18 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <a
               href={`tel:${request.primaryPhone}`}
+              onClick={(e) => {
+                if (!isAdmin) {
+                  if (!window.confirm(`ยืนยันการโทรติดต่อผู้ประสบภัย: คุณ${request.fullName} (${maskPhone(request.primaryPhone)}) เพื่อช่วยเหลือฉุกเฉิน?`)) {
+                    e.preventDefault();
+                  }
+                }
+              }}
               className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm text-center"
+              title={isAdmin ? 'โทรติดต่อ' : 'กดเพื่อโทร (เบอร์ถูกกำบังเพื่อความปลอดภัย)'}
             >
               <Phone className="w-3.5 h-3.5" />
-              <span>โทรหาผู้ประสบภัย</span>
+              <span>{isAdmin ? `โทร ${request.primaryPhone}` : `โทร ${maskPhone(request.primaryPhone)}`}</span>
             </a>
 
             <a
@@ -150,6 +169,81 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
               <Copy className="w-3.5 h-3.5" />
               <span>{copied ? 'คัดลอกแล้ว!' : 'คัดลอกข้อความ'}</span>
             </button>
+          </div>
+
+          {/* Google DeepMind WeatherNext 3 AI Micro-Forecast & Flood Hazard */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-900 text-white shadow-md border border-indigo-500/30">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-indigo-500/20 text-cyan-400 flex items-center justify-center border border-indigo-500/30">
+                  <CloudRain className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-white">พยากรณ์ฝน AI (WeatherNext 3)</span>
+                    <span className="text-[9px] bg-cyan-400/20 text-cyan-300 font-bold px-1.5 py-0.2 rounded border border-cyan-400/30">
+                      Google DeepMind
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">ความละเอียด 5 กม. • อัปเดตรายชั่วโมง</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  weather.surgeRiskIndex === 'CRITICAL'
+                    ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                }`}>
+                  {weather.surgeRiskIndex === 'CRITICAL' ? '⚠️ เสี่ยงน้ำหลากวิกฤต' : '⚡ เสี่ยงน้ำหลากสูง'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
+                <span className="text-[10px] text-slate-400 block">ฝนสะสม 24 ชม.</span>
+                <span className="text-sm font-black text-cyan-300">{weather.rainAccumulation24h} มม.</span>
+              </div>
+              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
+                <span className="text-[10px] text-slate-400 block">โอกาสฝนตก</span>
+                <span className="text-sm font-black text-blue-300">{weather.precipProbability}%</span>
+              </div>
+              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
+                <span className="text-[10px] text-slate-400 block">แนวโน้มระดับน้ำ</span>
+                <span className="text-xs font-bold text-amber-300 flex items-center justify-center gap-0.5 mt-0.5">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>{weather.waterLevelTrend === 'RISING_RAPIDLY' ? 'น้ำขึ้นเร็วมาก' : 'น้ำกำลังขึ้น'}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Hourly Outlook Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mb-2.5 scrollbar-none">
+              <span className="text-[10px] text-slate-400 shrink-0">แนวโน้ม 6 ชม:</span>
+              {weather.hourlyOutlook.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold shrink-0 border ${
+                    item.risk === 'danger'
+                      ? 'bg-red-950/70 text-red-200 border-red-500/40'
+                      : item.risk === 'warning'
+                      ? 'bg-amber-950/70 text-amber-200 border-amber-500/40'
+                      : 'bg-slate-800 text-slate-300 border-slate-700'
+                  }`}
+                >
+                  <span>{item.timeLabel}: </span>
+                  <span className="font-bold">{item.rainMm}mm</span>
+                </div>
+              ))}
+            </div>
+
+            {/* AI Operational Advisory */}
+            <div className="bg-indigo-950/70 p-2.5 rounded-xl border border-indigo-500/30 text-[11px] text-indigo-200 leading-relaxed flex items-start gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+              <span>{weather.aiAdvisory}</span>
+            </div>
           </div>
 
           {/* Location & Landmark Section */}
@@ -206,11 +300,26 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
                 <p className="text-slate-500 text-[11px] mt-1">{water.description}</p>
               </div>
 
-              {request.lineId && (
-                <div className="text-slate-700 mt-2">
-                  <b>LINE ID:</b> {request.lineId}
+              <div className="text-slate-700 mt-2 pt-2 border-t border-slate-200/80">
+                <div className="flex items-center justify-between">
+                  <span><b>เบอร์โทรศัพท์:</b> {isAdmin ? request.primaryPhone : maskPhone(request.primaryPhone)}</span>
                 </div>
-              )}
+                {request.secondaryPhone && (
+                  <div className="text-slate-600 text-[11px] mt-0.5">
+                    <b>เบอร์สำรอง:</b> {isAdmin ? request.secondaryPhone : maskPhone(request.secondaryPhone)}
+                  </div>
+                )}
+                {request.lineId && (
+                  <div className="text-slate-600 text-[11px] mt-0.5">
+                    <b>LINE ID:</b> {request.lineId}
+                  </div>
+                )}
+                {!isAdmin && (
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    🔒 ปกปิดเบอร์ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 

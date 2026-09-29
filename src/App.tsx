@@ -23,17 +23,27 @@ import {
   resetSOSRequestsToMock,
   subscribeToSOSChanges
 } from './services/db';
-import { 
-  AlertTriangle, 
-  MapPin, 
-  ListFilter, 
-  PhoneCall, 
-  BookOpen, 
-  LifeBuoy
+import {
+  AlertTriangle,
+  MapPin,
+  ListFilter,
+  PhoneCall,
+  BookOpen,
+  LifeBuoy,
+  type LucideIcon
 } from 'lucide-react';
+import type { TabKey } from './components/Navbar';
+
+const MOBILE_TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
+  { key: 'form', label: 'แจ้ง SOS', icon: AlertTriangle },
+  { key: 'feed', label: 'รายการเคส', icon: ListFilter },
+  { key: 'map', label: 'แผนที่', icon: MapPin },
+  { key: 'hotlines', label: 'สายด่วน', icon: PhoneCall },
+  { key: 'guide', label: 'เอาตัวรอด', icon: BookOpen }
+];
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'form' | 'feed' | 'map' | 'hotlines' | 'guide'>('form');
+  const [activeTab, setActiveTab] = useState<TabKey>('form');
   const [requests, setRequests] = useState<SOSRequest[]>([]);
   const [submittedRequest, setSubmittedRequest] = useState<SOSRequest | null>(null);
   const [selectedCase, setSelectedCase] = useState<SOSRequest | null>(null);
@@ -193,7 +203,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans pb-24 sm:pb-10">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans pb-24 sm:pb-0">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -208,8 +218,8 @@ export function App() {
         onLogoutAdmin={handleLogoutAdmin}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto">
+      {/* Main Content Area — re-keyed so switching tabs animates in */}
+      <main key={activeTab} className="mx-auto w-full max-w-7xl flex-1 animate-rise">
         {activeTab === 'form' && (
           <SosForm 
             onSubmitSuccess={handleSubmitSuccess}
@@ -234,6 +244,7 @@ export function App() {
           <RescueMap
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
+            isAdmin={isEffectiveAdmin}
           />
         )}
 
@@ -297,100 +308,66 @@ export function App() {
         />
       )}
 
-      {/* Sleek Mobile Bottom Tab Bar (iOS style frosted glass) */}
-      <div className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 py-2 px-3 flex items-center justify-around z-40 sm:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <button
-          onClick={() => setActiveTab('form')}
-          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
-            activeTab === 'form' 
-              ? 'text-red-600 font-bold' 
-              : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'form' ? 'bg-red-50 text-red-600' : ''}`}>
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5">แจ้ง SOS</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('feed')}
-          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all relative ${
-            activeTab === 'feed' 
-              ? 'text-red-600 font-bold' 
-              : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'feed' ? 'bg-red-50 text-red-600' : ''}`}>
-            <ListFilter className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5">รายการเหตุ</span>
-          {requests.length > 0 && (
-            <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-600"></span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('map')}
-          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
-            activeTab === 'map' 
-              ? 'text-blue-600 font-bold' 
-              : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'map' ? 'bg-blue-50 text-blue-600' : ''}`}>
-            <MapPin className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5">แผนที่</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('hotlines')}
-          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
-            activeTab === 'hotlines' 
-              ? 'text-emerald-600 font-bold' 
-              : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'hotlines' ? 'bg-emerald-50 text-emerald-600' : ''}`}>
-            <PhoneCall className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5">สายด่วน</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('guide')}
-          className={`flex flex-col items-center py-0.5 px-3 rounded-2xl transition-all ${
-            activeTab === 'guide' 
-              ? 'text-amber-600 font-bold' 
-              : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <div className={`p-1.5 rounded-xl transition-colors ${activeTab === 'guide' ? 'bg-amber-50 text-amber-600' : ''}`}>
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5">เอาตัวรอด</span>
-        </button>
-      </div>
+      {/* Mobile Tab Bar */}
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/90 backdrop-blur-xl backdrop-saturate-150 sm:hidden">
+        <div className="mx-auto flex max-w-lg items-stretch justify-around px-2 pt-1.5">
+          {MOBILE_TABS.map(({ key, label, icon: Icon }) => {
+            const isActive = activeTab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 transition-colors duration-200 ${
+                  isActive ? 'text-rose-600' : 'text-slate-400 active:text-slate-700'
+                }`}
+              >
+                <span className="relative">
+                  <Icon className="size-5" strokeWidth={isActive ? 2.4 : 2} />
+                  {key === 'feed' && requests.length > 0 && (
+                    <span className="absolute -right-1.5 -top-1 min-w-4 rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-4 text-white tabular-nums">
+                      {requests.length}
+                    </span>
+                  )}
+                </span>
+                <span className={`text-[10px] leading-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                  {label}
+                </span>
+                <span
+                  className={`h-0.5 w-5 rounded-full transition-colors duration-200 ${
+                    isActive ? 'bg-rose-600' : 'bg-transparent'
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <footer className="mt-auto border-t border-slate-200/80 bg-white/60">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-2 px-4 py-6 text-center text-xs text-slate-500 sm:flex-row sm:justify-between sm:text-left">
           <div className="flex items-center gap-2">
-            <LifeBuoy className="w-4 h-4 text-red-600" />
+            <LifeBuoy className="size-4 text-rose-600" />
             <span className="font-bold text-slate-800">ThaiFlood SOS</span>
-            <span>— แพลตฟอร์มอาสาเพื่อช่วยเหลือผู้ประสบอุทกภัย</span>
+            <span className="hidden sm:inline">— แพลตฟอร์มอาสาเพื่อช่วยเหลือผู้ประสบอุทกภัย</span>
           </div>
-          <div className="flex items-center gap-4 text-slate-600">
-            <span>สายด่วน ปภ. 1784</span>
-            <span>การแพทย์ฉุกเฉิน 1669</span>
-            <span>กู้ภัย 199</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <a href="tel:1784" className="font-semibold text-rose-600 transition-colors hover:text-rose-700">
+              ปภ. 1784
+            </a>
+            <a href="tel:1669" className="font-semibold text-emerald-600 transition-colors hover:text-emerald-700">
+              การแพทย์ 1669
+            </a>
+            <a href="tel:199" className="font-semibold text-sky-600 transition-colors hover:text-sky-700">
+              กู้ภัย 199
+            </a>
             {hasAdminUrl && (
               <button
                 onClick={() => setIsDbModalOpen(true)}
-                className="text-slate-400 hover:text-slate-700 underline text-[11px]"
+                className="text-slate-400 underline-offset-4 transition-colors hover:text-slate-700 hover:underline"
               >
-                ⚙️ ตั้งค่าระบบ (Admin)
+                ตั้งค่าระบบ (Admin)
               </button>
             )}
           </div>

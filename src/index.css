@@ -1,45 +1,338 @@
 @import "tailwindcss";
 
-:root {
-  font-family: 'Prompt', 'Sarabun', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-}
+/* ============================================================
+   Design tokens — single source of truth for the whole app
+   ============================================================ */
+@theme {
+  --font-sans: "Prompt", "Sarabun", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
 
-/* Custom pulse animations for SOS badges */
-@keyframes sos-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
+  /* Brand = rescue red. Used sparingly so it keeps its meaning. */
+  --color-brand-50: #fff1f2;
+  --color-brand-100: #ffe4e6;
+  --color-brand-200: #fecdd3;
+  --color-brand-300: #fda4af;
+  --color-brand-400: #fb7185;
+  --color-brand-500: #f43f5e;
+  --color-brand-600: #e11d48;
+  --color-brand-700: #be123c;
+  --color-brand-800: #9f1239;
+  --color-brand-900: #881337;
+
+  /* Elevation — soft, low-contrast, layered */
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04),
+    0 10px 30px -14px rgb(15 23 42 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.04),
+    0 22px 44px -20px rgb(15 23 42 / 0.28);
+  --shadow-glow: 0 10px 30px -10px rgb(225 29 72 / 0.45);
+  --shadow-bar: 0 -1px 0 rgb(15 23 42 / 0.04),
+    0 -12px 32px -20px rgb(15 23 42 / 0.35);
+
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-rise: rise 0.5s var(--ease-soft) both;
+  --animate-fade: fade 0.25s ease-out both;
+  --animate-sos-pulse: sos-pulse 2s var(--ease-soft) infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 14px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.04);
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes sos-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(0.92);
+    }
   }
 }
 
-.animate-sos-pulse {
-  animation: sos-pulse 1.6s infinite ease-in-out;
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Keyboard-only ring; pointer users never see it. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-500);
+    color: #fff;
+  }
 }
 
-/* Leaflet map styles */
+/* ============================================================
+   Components — repeated patterns, defined once
+   ============================================================ */
+@layer components {
+  /* Surfaces */
+  .surface {
+    background-color: #fff;
+    border: 1px solid rgb(226 232 240 / 0.9);
+    border-radius: var(--radius-3xl);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .surface-interactive {
+    transition:
+      box-shadow 0.35s var(--ease-soft),
+      transform 0.35s var(--ease-soft),
+      border-color 0.35s var(--ease-soft);
+  }
+
+  .surface-interactive:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translate3d(0, -2px, 0);
+    border-color: rgb(203 213 225);
+  }
+
+  /* Form controls — one look for input / select / textarea */
+  .field {
+    width: 100%;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--color-slate-300);
+    background-color: #fff;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: var(--color-slate-900);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .field::placeholder {
+    color: var(--color-slate-400);
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: var(--color-slate-400);
+  }
+
+  .field:focus,
+  .field:focus-visible {
+    outline: none;
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 4px rgb(244 63 94 / 0.14);
+  }
+
+  .field:disabled {
+    background-color: var(--color-slate-100);
+    color: var(--color-slate-400);
+    cursor: not-allowed;
+  }
+
+  .field-invalid {
+    border-color: var(--color-red-400);
+    background-color: var(--color-red-50);
+  }
+
+  .field-invalid:focus {
+    border-color: var(--color-red-500);
+    box-shadow: 0 0 0 4px rgb(248 113 113 / 0.18);
+  }
+
+  select.field {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394a3b8'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+    background-size: 1.15rem;
+    padding-right: 2.25rem;
+  }
+
+  /* Small caps label used above every field group */
+  .label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-slate-600);
+    letter-spacing: 0.01em;
+  }
+
+  /* Filter / toggle chip */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .chip-idle {
+    background-color: var(--color-slate-100);
+    color: var(--color-slate-600);
+  }
+
+  .chip-idle:hover {
+    background-color: var(--color-slate-200);
+    color: var(--color-slate-900);
+  }
+
+  /* Page section heading used by every tab */
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--color-slate-900);
+  }
+
+  @media (min-width: 640px) {
+    .page-title {
+      font-size: 1.875rem;
+    }
+  }
+
+  .page-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--color-slate-500);
+    line-height: 1.6;
+  }
+}
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* ============================================================
+   Leaflet — blend the map into the card it lives in
+   ============================================================ */
 .leaflet-container {
   width: 100%;
   height: 100%;
-  border-radius: 0.75rem;
+  background: var(--color-slate-100);
+  font-family: inherit;
   z-index: 10;
 }
 
-/* Custom scrollbars */
+.leaflet-container a {
+  color: var(--color-brand-700);
+}
+
+.leaflet-bar {
+  border: none !important;
+  box-shadow: var(--shadow-lift) !important;
+  border-radius: var(--radius-xl) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  border: none !important;
+  color: var(--color-slate-700) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-2xl) !important;
+  box-shadow: var(--shadow-lift) !important;
+  padding: 0;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+  font-family: inherit !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: var(--shadow-soft);
+}
+
+/* Scrollbars — thin and quiet */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: var(--color-slate-300);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--color-slate-400);
+  background-clip: content-box;
+}
+
+/* ============================================================
+   Accessibility
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
