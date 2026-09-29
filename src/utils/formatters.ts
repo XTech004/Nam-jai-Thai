@@ -127,3 +127,59 @@ export function getStatusInfo(status: RequestStatus) {
       };
   }
 }
+
+/**
+ * Parses Google Maps URL or raw coordinate strings into { lat, lng }
+ * Supports:
+ * - "19.9071, 99.8325"
+ * - https://www.google.com/maps?q=19.9071,99.8325
+ * - https://www.google.com/maps/place/.../@19.9071,99.8325,17z/...
+ * - https://maps.google.com/?query=19.9071,99.8325
+ * - https://www.google.com/maps/...!3d19.9071!4d99.8325...
+ */
+export function parseGoogleMapsCoordinates(input: string): { lat: number; lng: number } | null {
+  if (!input || typeof input !== 'string') return null;
+  const str = input.trim();
+
+  // 1. Direct coordinates: "19.9071, 99.8325" or "19.9071,99.8325"
+  const directCoordMatch = str.match(/^(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)$/);
+  if (directCoordMatch) {
+    const lat = parseFloat(directCoordMatch[1]);
+    const lng = parseFloat(directCoordMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 2. Query param q=lat,lng or query=lat,lng or ll=lat,lng
+  const queryMatch = str.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
+  if (queryMatch) {
+    const lat = parseFloat(queryMatch[1]);
+    const lng = parseFloat(queryMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 3. Path @lat,lng,zoom pattern: .../@19.9071,99.8325,17z...
+  const atMatch = str.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 4. Pattern !3dlat!4dlng in Google Maps URLs
+  const dataMatch = str.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+  if (dataMatch) {
+    const lat = parseFloat(dataMatch[1]);
+    const lng = parseFloat(dataMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}

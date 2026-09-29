@@ -530,11 +530,12 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                           )}
 
                           <a
-                            href={getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng)}
+                            href={req.googleMapsUrl || getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng)}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-slate-800"
+                            title={req.googleMapsUrl ? 'เปิดพิกัดจริงที่ผู้ประสบภัยแนบมา' : 'เปิด Google Maps นำทาง'}
                           >
                             <Navigation className="size-3.5" />
                             นำทาง

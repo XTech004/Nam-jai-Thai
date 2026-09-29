@@ -151,13 +151,14 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
             </a>
 
             <a
-              href={mapsUrl}
+              href={request.googleMapsUrl || mapsUrl}
               target="_blank"
               rel="noreferrer"
               className="py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm text-center"
+              title={request.googleMapsUrl ? 'เปิดพิกัดจริงที่ผู้ประสบภัยแชร์มา' : 'เปิด Google Maps'}
             >
               <Navigation className="w-3.5 h-3.5" />
-              <span>เปิด Google Maps</span>
+              <span>{request.googleMapsUrl ? 'เปิด Google Maps (พิกัดผู้แจ้ง)' : 'เปิด Google Maps'}</span>
             </a>
 
             {request.lineId ? (
@@ -280,8 +281,19 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
                 🚩 <b>จุดสังเกตเด่น:</b> {request.landmark}
               </div>
             )}
-            <div className="ml-5 text-slate-500 text-xs">
-              พิกัด GPS: {request.coordinates.lat.toFixed(5)}, {request.coordinates.lng.toFixed(5)}
+            <div className="ml-5 text-slate-500 text-xs flex flex-wrap items-center gap-2">
+              <span>พิกัด GPS: {request.coordinates.lat.toFixed(5)}, {request.coordinates.lng.toFixed(5)}</span>
+              {request.googleMapsUrl && (
+                <a
+                  href={request.googleMapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 underline ml-2"
+                >
+                  <Navigation className="w-3 h-3" />
+                  <span>เปิดลิงก์ Google Maps ที่ผู้แจ้งแนบมา</span>
+                </a>
+              )}
             </div>
           </div>
 

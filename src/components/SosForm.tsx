@@ -19,12 +19,16 @@ import {
   Plus,
   UserRound,
   OctagonAlert,
+  Link2,
+  X,
   type LucideIcon
 } from 'lucide-react';
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
 import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
 import { formatPhone } from '../services/userService';
+import { parseGoogleMapsCoordinates } from '../utils/formatters';
+import { IncompleteFormModal, type MissingFieldItem } from './IncompleteFormModal';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
@@ -158,6 +162,57 @@ export const SosForm: React.FC<SosFormProps> = ({
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Google Maps URL & Precision Coordinates
+  const [googleMapsInput, setGoogleMapsInput] = useState<string>('');
+  const [isParsedFromUrl, setIsParsedFromUrl] = useState<boolean>(false);
+
+  // Missing Fields Modal State
+  const [missingList, setMissingList] = useState<MissingFieldItem[]>([]);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState<boolean>(false);
+
+  const handleGoogleMapsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setGoogleMapsInput(val);
+
+    if (!val.trim()) {
+      setIsParsedFromUrl(false);
+      return;
+    }
+
+    const parsed = parseGoogleMapsCoordinates(val);
+    if (parsed) {
+      setCoords({
+        lat: parsed.lat,
+        lng: parsed.lng,
+        accuracy: 5
+      });
+      setIsParsedFromUrl(true);
+      setGpsError('');
+    } else {
+      setIsParsedFromUrl(false);
+    }
+  };
+
+  const handleClearGoogleMapsInput = () => {
+    setGoogleMapsInput('');
+    setIsParsedFromUrl(false);
+  };
+
+  const handleFixField = (elementId: string) => {
+    setIsValidationModalOpen(false);
+    setTimeout(() => {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus();
+        el.classList.add('ring-4', 'ring-rose-400', 'border-rose-500');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-rose-400', 'border-rose-500');
+        }, 3000);
+      }
+    }, 150);
+  };
+
   const handleProvinceChange = (newProvince: string) => {
     setProvince(newProvince);
     setDistrict('');
@@ -270,28 +325,95 @@ export const SosForm: React.FC<SosFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { [key: string]: string } = {};
+    const missing: MissingFieldItem[] = [];
 
     if (!fullName.trim()) {
       errors.fullName = 'กรุณาระบุชื่อ-นามสกุล หรือชื่อเล่นผู้ติดต่อ';
-    }
-    if (!primaryPhone.trim()) {
-      errors.primaryPhone = 'กรุณาระบุเบอร์โทรศัพท์ที่ติดต่อได้';
-    } else if (!/^[0-9\-+\s]{8,15}$/.test(primaryPhone.trim())) {
-      errors.primaryPhone = 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง';
-    }
-    if (!province) {
-      errors.province = 'กรุณาเลือกจังหวัด';
-    }
-    if (!district) {
-      errors.district = 'กรุณาเลือกอำเภอ';
-    }
-    if (!address.trim() && !landmark.trim()) {
-      errors.address = 'กรุณาระบุบ้านเลขที่ ซอย หรือจุดสังเกตเด่น';
+      missing.push({
+        id: 'missing-fullname',
+        fieldKey: 'fullName',
+        elementId: 'field-fullName',
+        label: 'ชื่อ-นามสกุล ผู้ติดต่อ',
+        message: 'ยังไม่ได้ระบุชื่อผู้ติดต่อ หรือชื่อเล่นของผู้ประสบภัย',
+        severity: 'critical'
+      });
     }
 
-    if (Object.keys(errors).length > 0) {
+    if (!primaryPhone.trim()) {
+      errors.primaryPhone = 'กรุณาระบุเบอร์โทรศัพท์ที่ติดต่อได้';
+      missing.push({
+        id: 'missing-phone',
+        fieldKey: 'primaryPhone',
+        elementId: 'field-primaryPhone',
+        label: 'เบอร์โทรศัพท์ติดต่อ',
+        message: 'จำเป็นต้องมีเบอร์โทรเพื่อให้ทีมกู้ภัยสามารถติดต่อและประสานงานได้',
+        severity: 'critical'
+      });
+    } else if (!/^[0-9\-+\s]{8,15}$/.test(primaryPhone.trim())) {
+      errors.primaryPhone = 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง (กรุณากรอก 9-10 หลัก)';
+      missing.push({
+        id: 'invalid-phone',
+        fieldKey: 'primaryPhone',
+        elementId: 'field-primaryPhone',
+        label: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
+        message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาตรวจสอบตัวเลข 9-10 หลัก',
+        severity: 'critical'
+      });
+    }
+
+    if (!province) {
+      errors.province = 'กรุณาเลือกจังหวัด';
+      missing.push({
+        id: 'missing-province',
+        fieldKey: 'province',
+        elementId: 'field-province',
+        label: 'จังหวัด',
+        message: 'ยังไม่ได้เลือกจังหวัด เพื่อให้ส่งเรื่องไปยังศูนย์กู้ภัยในพื้นที่',
+        severity: 'critical'
+      });
+    }
+
+    if (!district) {
+      errors.district = 'กรุณาเลือกอำเภอ';
+      missing.push({
+        id: 'missing-district',
+        fieldKey: 'district',
+        elementId: 'field-district',
+        label: 'อำเภอ',
+        message: 'ยังไม่ได้เลือกอำเภอ สำหรับระบุพิกัดกู้ภัยประจำพื้นที่',
+        severity: 'critical'
+      });
+    }
+
+    if (!address.trim() && !landmark.trim()) {
+      errors.address = 'กรุณาระบุบ้านเลขที่ ซอย หรือจุดสังเกตเด่น';
+      missing.push({
+        id: 'missing-landmark',
+        fieldKey: 'landmark',
+        elementId: 'field-landmark',
+        label: 'จุดสังเกตเด่น / ที่อยู่',
+        message: 'จำเป็นอย่างยิ่งในสถานการณ์น้ำท่วมเมื่อป้ายบ้านจมน้ำ (เช่น บ้านรั้วสีฟ้า หลังวัด)',
+        severity: 'critical'
+      });
+    }
+
+    const totalPeople = people.adults + people.elderly + people.bedridden + people.children + people.pets;
+    if (totalPeople === 0) {
+      errors.people = 'กรุณาระบุจำนวนผู้ติดค้างอย่างน้อย 1 คน';
+      missing.push({
+        id: 'missing-people',
+        fieldKey: 'people',
+        elementId: 'field-people',
+        label: 'จำนวนผู้ประสบภัยที่ติดค้าง',
+        message: 'ยังไม่ได้ระบุจำนวนผู้ติดค้าง เพื่อให้กู้ภัยจัดเตรียมเรือและขนาดทีมได้ถูกต้อง',
+        severity: 'warning'
+      });
+    }
+
+    if (missing.length > 0) {
       setFormErrors(errors);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setMissingList(missing);
+      setIsValidationModalOpen(true);
       return;
     }
 
@@ -335,6 +457,7 @@ export const SosForm: React.FC<SosFormProps> = ({
       address: address.trim(),
       landmark: landmark.trim(),
       coordinates: finalCoordinates,
+      googleMapsUrl: googleMapsInput.trim() || undefined,
       waterLevel,
       people,
       needs: selectedNeeds.length > 0 ? selectedNeeds : ['ต้องการความช่วยเหลือเร่งด่วน'],
@@ -472,12 +595,63 @@ export const SosForm: React.FC<SosFormProps> = ({
             </p>
           )}
 
+          {/* Google Maps Link / Direct Coordinates Attachment */}
+          <div id="field-googleMaps" className="mb-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <label htmlFor="input-google-maps" className="font-bold text-slate-800 flex items-center gap-1.5">
+                <Link2 className="size-3.5 text-blue-600" />
+                <span>หรือ แนบลิงก์ Google Maps / ระบุพิกัด (แนะนำเพื่อความแม่นยำ 100%)</span>
+              </label>
+              {isParsedFromUrl && (
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="size-3 text-emerald-600" />
+                  ดึงพิกัดแล้ว!
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                id="input-google-maps"
+                type="text"
+                placeholder="วางลิงก์ Google Maps (เช่น https://maps.app.goo.gl/...) หรือพิกัด 19.9071, 99.8325"
+                value={googleMapsInput}
+                onChange={handleGoogleMapsInputChange}
+                className={`field bg-white pr-9 text-xs font-mono ${
+                  coords && isParsedFromUrl ? 'border-emerald-400 ring-2 ring-emerald-100' : ''
+                }`}
+              />
+              {googleMapsInput && (
+                <button
+                  type="button"
+                  onClick={handleClearGoogleMapsInput}
+                  title="ล้างข้อความ"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            {coords && isParsedFromUrl && (
+              <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="size-3" />
+                <span>ปักหมุดแล้ว: ละติจูด {coords.lat.toFixed(5)}, ลองจิจูด {coords.lng.toFixed(5)}</span>
+              </p>
+            )}
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              💡 <b>วิธีแชร์:</b> เปิดแอป Google Maps &gt; กดค้างที่บ้านของคุณ &gt; กด <b>แชร์ (Share)</b> แล้วคัดลอกลิงก์มาวางที่นี่ ระบบจะปักหมุดบนแผนที่กู้ภัยให้ตรงตำแหน่งเป๊ะ
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             <div>
               <span className="label">
                 จังหวัด <span className="text-rose-500">*</span>
               </span>
               <select
+                id="field-province"
                 value={province}
                 onChange={(e) => handleProvinceChange(e.target.value)}
                 className={`field ${formErrors.province ? 'field-invalid' : ''}`}
@@ -495,6 +669,7 @@ export const SosForm: React.FC<SosFormProps> = ({
                 อำเภอ <span className="text-rose-500">*</span>
               </span>
               <select
+                id="field-district"
                 value={district}
                 disabled={!province}
                 onChange={(e) => handleDistrictChange(e.target.value)}
@@ -528,6 +703,7 @@ export const SosForm: React.FC<SosFormProps> = ({
             <div>
               <span className="label">บ้านเลขที่ / หมู่ / ซอย / ถนน</span>
               <input
+                id="field-address"
                 type="text"
                 placeholder="เช่น 123/4 หมู่ 5 ซอยริมน้ำ 3"
                 value={address}
@@ -543,6 +719,7 @@ export const SosForm: React.FC<SosFormProps> = ({
               <div className="relative">
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-amber-500" />
                 <input
+                  id="field-landmark"
                   type="text"
                   placeholder="เช่น บ้านไม้ 2 ชั้น รั้วสีฟ้า ติดวัดเกาะทราย"
                   value={landmark}
@@ -556,7 +733,7 @@ export const SosForm: React.FC<SosFormProps> = ({
         </section>
 
         {/* 3 — People & needs */}
-        <section className="surface p-5 sm:p-6">
+        <section id="field-people" className="surface p-5 sm:p-6">
           <SectionHeading step={3} title="ผู้ติดค้าง & สิ่งที่ต้องการ" />
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -662,6 +839,7 @@ export const SosForm: React.FC<SosFormProps> = ({
                 ชื่อ-นามสกุล หรือชื่อเล่น <span className="text-rose-500">*</span>
               </span>
               <input
+                id="field-fullName"
                 type="text"
                 placeholder="เช่น สมศักดิ์ วงศ์สว่าง"
                 value={fullName}
@@ -678,6 +856,7 @@ export const SosForm: React.FC<SosFormProps> = ({
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="field-primaryPhone"
                   type="tel"
                   placeholder="08X-XXX-XXXX"
                   value={primaryPhone}
@@ -789,6 +968,14 @@ export const SosForm: React.FC<SosFormProps> = ({
           </p>
         </div>
       </form>
+
+      {/* Missing Form Information Alert Modal */}
+      <IncompleteFormModal
+        isOpen={isValidationModalOpen}
+        onClose={() => setIsValidationModalOpen(false)}
+        missingFields={missingList}
+        onFixField={handleFixField}
+      />
     </div>
   );
 };

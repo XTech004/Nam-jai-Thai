@@ -29,6 +29,7 @@ export function toSOSRequest(row: any): SOSRequest {
       lng: Number(row.longitude),
       accuracy: 10,
     },
+    googleMapsUrl: row.google_maps_url || undefined,
     waterLevel: row.water_level,
     people: typeof row.people === 'object' && row.people !== null
       ? row.people
@@ -60,6 +61,7 @@ export function toDBRow(req: SOSRequest): any {
     landmark: req.landmark,
     latitude: req.coordinates.lat,
     longitude: req.coordinates.lng,
+    google_maps_url: req.googleMapsUrl || null,
     water_level: req.waterLevel,
     people: req.people,
     needs: req.needs,

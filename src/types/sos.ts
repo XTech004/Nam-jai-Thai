@@ -43,6 +43,7 @@ export interface SOSRequest {
   address: string;
   landmark: string; // จุดสังเกต เช่น บ้านรั้วสีฟ้า หลังวัด
   coordinates: Coordinates;
+  googleMapsUrl?: string; // ลิงก์ Google Maps ที่ผู้แจ้งแนบมา
   
   // สถานการณ์น้ำ & ผู้อยู่อาศัย
   waterLevel: WaterLevel;
