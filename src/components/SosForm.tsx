@@ -13,7 +13,8 @@ import {
   Sparkles,
   Info,
   Clock,
-  Home
+  Home,
+  ShieldAlert
 } from 'lucide-react';
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
@@ -215,6 +216,21 @@ export const SosForm: React.FC<SosFormProps> = ({
       return;
     }
 
+    // Anti-spam Cooldown Check (60 seconds per device)
+    const LAST_SOS_KEY = 'thai_flood_last_sos_timestamp';
+    try {
+      const lastSent = localStorage.getItem(LAST_SOS_KEY);
+      if (lastSent) {
+        const elapsedSec = Math.floor((Date.now() - parseInt(lastSent, 10)) / 1000);
+        if (elapsedSec < 60) {
+          alert(`⚠️ ระบบได้รับคำขอของคุณเรียบร้อยแล้ว เพื่อป้องกันข้อมูลซ้ำซ้อน กรุณารออีก ${60 - elapsedSec} วินาที หากต้องการส่งข้อมูลเพิ่มเติม`);
+          return;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     setFormErrors({});
     setIsSubmitting(true);
 
@@ -246,6 +262,12 @@ export const SosForm: React.FC<SosFormProps> = ({
       notes: notes.trim() || undefined,
       imageUrl: imagePreview || undefined,
     };
+
+    try {
+      localStorage.setItem(LAST_SOS_KEY, Date.now().toString());
+    } catch (e) {
+      // ignore
+    }
 
     setTimeout(() => {
       setIsSubmitting(false);
@@ -681,14 +703,16 @@ export const SosForm: React.FC<SosFormProps> = ({
             </div>
           ) : (
             onOpenUserAuth && (
-              <div className="mb-3.5 p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
-                <span>มีบัญชีผู้ใช้งานแล้ว หรือต้องการยืนยันเบอร์?</span>
+              <div className="mb-3.5 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-600 leading-tight">
+                  💡 <b>แนะนำ:</b> เข้าสู่ระบบด้วย LINE หรือยืนยันเบอร์ OTP เพื่อเพิ่มความน่าเชื่อถือของเคส และให้ทีมกู้ภัยติดต่อกลับได้สะดวกรวดเร็ว
+                </span>
                 <button
                   type="button"
                   onClick={onOpenUserAuth}
-                  className="text-red-600 font-bold hover:underline cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-bold hover:text-emerald-700 text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs flex items-center gap-1"
                 >
-                  เข้าสู่ระบบด้วย OTP ↗
+                  <span>เข้าสู่ระบบ (LINE / OTP) ↗</span>
                 </button>
               </div>
             )
@@ -805,6 +829,15 @@ export const SosForm: React.FC<SosFormProps> = ({
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Security & Legal Warning Notice */}
+        <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex items-start gap-2.5 text-xs text-amber-900 shadow-xs mb-3">
+          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-[11px] leading-relaxed">
+            <span className="font-bold">ระบบรักษาความปลอดภัย & กฎหมาย:</span> ข้อมูลนี้จะส่งตรงถึงทีมกู้ภัยเพื่อจัดสรรเรือและกำลังพล 
+            <span className="text-amber-800"> การแจ้งเหตุเท็จหรือกดเล่นมีความผิดตามประมวลกฎหมายอาญา มาตรา 137 และ พ.ร.บ.คอมพิวเตอร์ ระบบบันทึกข้อมูลและพิกัดเพื่อความปลอดภัย</span>
           </div>
         </div>
 

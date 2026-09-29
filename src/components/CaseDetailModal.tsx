@@ -14,7 +14,10 @@ import {
   Edit3, 
   Save, 
   MessageSquare,
-  Trash2
+  Trash2,
+  Lock,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { 
@@ -32,6 +35,7 @@ interface CaseDetailModalProps {
   onUpdateStatus: (id: string, status: RequestStatus, note?: string, rescuer?: string) => void;
   isAdmin?: boolean;
   onDeleteCase?: (id: string) => void;
+  onRequestAdminLogin?: () => void;
 }
 
 export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
@@ -39,7 +43,8 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
   onClose,
   onUpdateStatus,
   isAdmin = false,
-  onDeleteCase
+  onDeleteCase,
+  onRequestAdminLogin
 }) => {
   if (!request) return null;
 
@@ -246,74 +251,138 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
             </div>
           )}
 
-          {/* Rescuer Status Update Section */}
+          {/* Rescuer Status Section */}
           <div className="border-t border-slate-200 pt-4 bg-slate-50 -mx-4 -mb-4 p-4 sm:p-5 rounded-b-3xl">
-            <h4 className="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-blue-600" />
-              <span>บันทึกสถานะการเข้าช่วยเหลือ (สำหรับทีมกู้ภัย / แอดมิน)</span>
-            </h4>
+            {isAdmin ? (
+              /* ======================================================== */
+              /* Admin / Rescuer Mode: Full Editable Controls             */
+              /* ======================================================== */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-purple-950 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-purple-700" />
+                    <span>บันทึกสถานะการเข้าช่วยเหลือ (โหมดแอดมิน / กู้ภัย)</span>
+                  </h4>
+                  <span className="text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full">
+                    ✓ ปลดล็อคสิทธิ์แล้ว
+                  </span>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">สถานะปัจจุบัน</label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value as RequestStatus)}
-                  className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-400"
-                >
-                  <option value="PENDING">รอดำเนินการ (PENDING)</option>
-                  <option value="RESPONDING">ทีมกู้ภัยกำลังเดินทางไปช่วย (RESPONDING)</option>
-                  <option value="COMPLETED">ช่วยเหลือสำเร็จแล้ว (COMPLETED)</option>
-                  <option value="CANCELLED">ยกเลิกเคส (CANCELLED)</option>
-                </select>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">สถานะปัจจุบัน</label>
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value as RequestStatus)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-purple-400 font-medium"
+                    >
+                      <option value="PENDING">🔴 รอดำเนินการ (PENDING)</option>
+                      <option value="RESPONDING">🟡 ทีมกู้ภัยกำลังเดินทางไปช่วย (RESPONDING)</option>
+                      <option value="COMPLETED">🟢 ช่วยเหลือสำเร็จแล้ว (COMPLETED)</option>
+                      <option value="CANCELLED">⚪ ยกเลิกเคส (CANCELLED)</option>
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">ชื่อทีมกู้ภัย / ผู้รับผิดชอบ</label>
-                <input
-                  type="text"
-                  placeholder="เช่น กู้ภัยสว่างเชียงราย ทีม 2"
-                  value={rescuerName}
-                  onChange={(e) => setRescuerName(e.target.value)}
-                  className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">ชื่อทีมกู้ภัย / ผู้รับผิดชอบ</label>
+                    <input
+                      type="text"
+                      placeholder="เช่น กู้ภัยสว่างเชียงราย ทีม 2"
+                      value={rescuerName}
+                      onChange={(e) => setRescuerName(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-purple-400 font-medium"
+                    />
+                  </div>
+                </div>
 
-            <div className="mb-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">บันทึกการปฏิบัติการ</label>
-              <textarea
-                rows={2}
-                placeholder="เช่น ส่งเรือท้องแบนเข้าช่วยอพยพผู้ป่วยไปยังโรงพยาบาลสนามเรียบร้อย"
-                value={responderNotes}
-                onChange={(e) => setResponderNotes(e.target.value)}
-                className="w-full p-2 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">บันทึกการปฏิบัติการ</label>
+                  <textarea
+                    rows={2}
+                    placeholder="เช่น ส่งเรือท้องแบนเข้าช่วยอพยพผู้ป่วยไปยังโรงพยาบาลสนามเรียบร้อย"
+                    value={responderNotes}
+                    onChange={(e) => setResponderNotes(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-purple-400"
+                  />
+                </div>
 
-            <button
-              onClick={handleSaveUpdate}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSaved ? '✓ บันทึกข้อมูลเรียบร้อยแล้ว' : 'บันทึกการเปลี่ยนแปลงสถานะ'}</span>
-            </button>
-
-            {isAdmin && onDeleteCase && (
-              <div className="mt-3 pt-3 border-t border-slate-200 flex justify-end">
                 <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเคส "${request.fullName}" (รหัส: ${request.id}) ออกจากระบบ?`)) {
-                      onDeleteCase(request.id);
-                      onClose();
-                    }
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors border border-red-200 cursor-pointer"
+                  onClick={handleSaveUpdate}
+                  className="w-full py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  <span>ลบเคสนี้ออกจากระบบ (เฉพาะแอดมิน)</span>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaved ? '✓ บันทึกข้อมูลเรียบร้อยแล้ว' : 'บันทึกการเปลี่ยนแปลงสถานะ'}</span>
                 </button>
+
+                {onDeleteCase && (
+                  <div className="pt-2 border-t border-purple-200/80 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเคส "${request.fullName}" (รหัส: ${request.id}) ออกจากระบบ?`)) {
+                          onDeleteCase(request.id);
+                          onClose();
+                        }
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors border border-red-200 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>ลบเคสนี้ออกจากระบบ</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ======================================================== */
+              /* Public Viewer Mode: Read-Only with Security Lock Notice  */
+              /* ======================================================== */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>สถานะการช่วยเหลือและบันทึกกู้ภัย</span>
+                  </h4>
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${currentStatus.badgeClass}`}>
+                    {currentStatus.label}
+                  </span>
+                </div>
+
+                {/* Read-Only Status Details */}
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">ทีมกู้ภัยที่รับผิดชอบ:</span>
+                    <span className="font-bold text-slate-800">
+                      {request.rescuedBy ? `🚒 ${request.rescuedBy}` : '— รอทีมกู้ภัยลงพื้นที่รับเรื่อง —'}
+                    </span>
+                  </div>
+                  <div className="border-t border-slate-100 pt-2">
+                    <span className="text-slate-500 font-medium block mb-1">บันทึกการปฏิบัติการ:</span>
+                    <div className="bg-slate-50 p-2.5 rounded-xl text-slate-700 text-xs whitespace-pre-wrap border border-slate-200/60 leading-relaxed">
+                      {request.responderNotes || 'ยังไม่มีบันทึกเพิ่มเติมจากเจ้าหน้าที่'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Lock Card & Unlock Button */}
+                <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                  <div className="flex items-start gap-2">
+                    <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-amber-900 leading-relaxed">
+                      <span className="font-bold">ระบบรักษาความปลอดภัย:</span> บุคคลทั่วไปสามารถดูข้อมูลได้อย่างเดียว เพื่อป้องกันการแก้ไขข้อมูลโดยไม่ได้รับอนุญาต
+                    </div>
+                  </div>
+
+                  {onRequestAdminLogin && (
+                    <button
+                      type="button"
+                      onClick={onRequestAdminLogin}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Lock className="w-3 h-3 text-amber-400" />
+                      <span>เจ้าหน้าที่กู้ภัย? ใส่ PIN</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

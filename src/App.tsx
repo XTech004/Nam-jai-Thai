@@ -293,6 +293,7 @@ export function App() {
           onUpdateStatus={handleUpdateStatus}
           isAdmin={isEffectiveAdmin}
           onDeleteCase={handleDeleteCase}
+          onRequestAdminLogin={() => setIsAdminLoginOpen(true)}
         />
       )}
 
