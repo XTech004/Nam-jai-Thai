@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   MapPin, 
   AlertOctagon, 
@@ -15,15 +15,22 @@ import {
   Clock,
   Home
 } from 'lucide-react';
-import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount } from '../types/sos';
+import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
 import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
+import { formatPhone } from '../services/userService';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
+  currentUser?: UserProfile | null;
+  onOpenUserAuth?: () => void;
 }
 
-export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
+export const SosForm: React.FC<SosFormProps> = ({ 
+  onSubmitSuccess, 
+  currentUser, 
+  onOpenUserAuth 
+}) => {
   // Form State
   const [urgency, setUrgency] = useState<UrgencyLevel>('CRITICAL');
   const [waterLevel, setWaterLevel] = useState<WaterLevel>('SECOND_FLOOR');
@@ -91,6 +98,18 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Auto-fill contact info if currentUser is logged in
+  useEffect(() => {
+    if (currentUser) {
+      if (!fullName) {
+        setFullName(`${currentUser.firstName} ${currentUser.lastName}`.trim());
+      }
+      if (!primaryPhone) {
+        setPrimaryPhone(currentUser.phone);
+      }
+    }
+  }, [currentUser]);
 
   // Trigger GPS retrieval
   const handleGetGPS = () => {
@@ -646,6 +665,31 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
               ข้อมูลติดต่อผู้แจ้ง <span className="text-red-500">*</span>
             </h2>
           </div>
+
+          {/* Account status info banner */}
+          {currentUser ? (
+            <div className="mb-3.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-xs text-emerald-900 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  กรอกข้อมูลอัตโนมัติจากบัญชี: <b>คุณ{currentUser.firstName} {currentUser.lastName}</b> ({formatPhone(currentUser.phone)})
+                </span>
+              </div>
+            </div>
+          ) : (
+            onOpenUserAuth && (
+              <div className="mb-3.5 p-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+                <span>มีบัญชีผู้ใช้งานแล้ว หรือต้องการยืนยันเบอร์?</span>
+                <button
+                  type="button"
+                  onClick={onOpenUserAuth}
+                  className="text-red-600 font-bold hover:underline cursor-pointer"
+                >
+                  เข้าสู่ระบบด้วย OTP ↗
+                </button>
+              </div>
+            )
+          )}
 
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -63,3 +63,11 @@ export interface EmergencyContact {
   iconType: 'ambulance' | 'shield' | 'truck' | 'phone' | 'utility';
   category: 'national' | 'medical' | 'rescue' | 'utility';
 }
+
+export interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  registeredAt: string;
+}

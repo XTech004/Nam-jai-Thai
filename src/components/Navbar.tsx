@@ -13,8 +13,9 @@ import {
   ShieldCheck,
   ChevronRight
 } from 'lucide-react';
-import type { SOSRequest } from '../types/sos';
+import type { SOSRequest, UserProfile } from '../types/sos';
 import { isSupabaseActive } from '../services/supabaseClient';
+import { User as UserIcon } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide';
@@ -22,6 +23,9 @@ interface NavbarProps {
   requests: SOSRequest[];
   isAdmin?: boolean;
   showAdminOption?: boolean;
+  currentUser?: UserProfile | null;
+  onOpenUserAuth?: () => void;
+  onLogoutUser?: () => void;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
 }
@@ -32,6 +36,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   requests,
   isAdmin = false,
   showAdminOption = false,
+  currentUser,
+  onOpenUserAuth,
+  onLogoutUser,
   onOpenAdminLogin,
   onLogoutAdmin
 }) => {
@@ -165,8 +172,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right side: Urgent Live Stats & Primary CTA */}
-        <div className="flex items-center gap-3">
+        {/* Right side: Urgent Live Stats & User Profile / CTA */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* User Profile or Login Button */}
+          {currentUser ? (
+            <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs">
+              <UserIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span className="hidden sm:inline">คุณ</span>
+              <span className="font-bold max-w-[90px] sm:max-w-[120px] truncate">{currentUser.firstName}</span>
+              {onLogoutUser && (
+                <button 
+                  onClick={onLogoutUser}
+                  className="text-[10px] text-slate-400 hover:text-red-600 underline ml-1 cursor-pointer"
+                  title="ออกจากระบบ"
+                >
+                  ออก
+                </button>
+              )}
+            </div>
+          ) : (
+            onOpenUserAuth && (
+              <button
+                onClick={onOpenUserAuth}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer border border-slate-200/60"
+              >
+                <UserIcon className="w-3.5 h-3.5 text-slate-500" />
+                <span>เข้าสู่ระบบ</span>
+              </button>
+            )
+          )}
+
           {/* Live emergency counter (only shown if there are critical/pending cases) */}
           {criticalCount > 0 && (
             <div 

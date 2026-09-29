@@ -9,7 +9,9 @@ import { SuccessModal } from './components/SuccessModal';
 import { CaseDetailModal } from './components/CaseDetailModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
-import type { SOSRequest, RequestStatus } from './types/sos';
+import { UserAuthModal } from './components/UserAuthModal';
+import type { SOSRequest, RequestStatus, UserProfile } from './types/sos';
+import { getCurrentUser, logoutUser, USER_AUTH_EVENT } from './services/userService';
 import { 
   fetchSOSRequests, 
   createSOSRequest, 
@@ -35,6 +37,10 @@ export function App() {
   const [submittedRequest, setSubmittedRequest] = useState<SOSRequest | null>(null);
   const [selectedCase, setSelectedCase] = useState<SOSRequest | null>(null);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
+  const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
 
   // Check if admin=1 is present in URL
   const [hasAdminUrl, setHasAdminUrl] = useState<boolean>(() => {
@@ -63,6 +69,22 @@ export function App() {
     window.addEventListener('popstate', handleUrlChange);
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
+
+  // Listen to user auth changes
+  useEffect(() => {
+    const handleAuthChange = (e: Event) => {
+      const custom = e as CustomEvent<UserProfile | null>;
+      setCurrentUser(custom.detail);
+    };
+    window.addEventListener(USER_AUTH_EVENT, handleAuthChange);
+    return () => window.removeEventListener(USER_AUTH_EVENT, handleAuthChange);
+  }, []);
+
+  // Handle User Logout
+  const handleLogoutUser = () => {
+    logoutUser();
+    setCurrentUser(null);
+  };
 
   // Admin access is strictly active only when ?admin=1 is in URL AND PIN is verified
   const isEffectiveAdmin = hasAdminUrl && isAdmin;
@@ -165,6 +187,9 @@ export function App() {
         requests={requests}
         isAdmin={isEffectiveAdmin}
         showAdminOption={hasAdminUrl}
+        currentUser={currentUser}
+        onOpenUserAuth={() => setIsUserAuthOpen(true)}
+        onLogoutUser={handleLogoutUser}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
       />
@@ -172,7 +197,11 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto">
         {activeTab === 'form' && (
-          <SosForm onSubmitSuccess={handleSubmitSuccess} />
+          <SosForm 
+            onSubmitSuccess={handleSubmitSuccess}
+            currentUser={currentUser}
+            onOpenUserAuth={() => setIsUserAuthOpen(true)}
+          />
         )}
 
         {activeTab === 'feed' && (
@@ -202,6 +231,15 @@ export function App() {
           <EmergencyGuide />
         )}
       </main>
+
+      {/* User Login & OTP Verification Modal */}
+      <UserAuthModal
+        isOpen={isUserAuthOpen}
+        onClose={() => setIsUserAuthOpen(false)}
+        onSuccess={(user) => {
+          setCurrentUser(user);
+        }}
+      />
 
       {/* Admin Login Modal */}
       <AdminLoginModal
