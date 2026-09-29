@@ -200,18 +200,66 @@ export const SosForm: React.FC<SosFormProps> = ({
 
   const handleFixField = (elementId: string) => {
     setIsValidationModalOpen(false);
+
+    // If trying to fix district without province, target province first
+    let targetId = elementId;
+    if (targetId === 'field-district' && !province) {
+      targetId = 'field-province';
+    }
+
     setTimeout(() => {
-      const el = document.getElementById(elementId);
+      const el = document.getElementById(targetId);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.focus();
-        el.classList.add('ring-4', 'ring-rose-400', 'border-rose-500');
+        // Clear any previous highlights
+        document.querySelectorAll('.field-highlight-active').forEach((node) => {
+          node.classList.remove('field-highlight-active');
+        });
+
+        // Calculate smooth scroll target with offset for sticky navbar (64px) + comfortable breathing room
+        const rect = el.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const targetY = scrollTop + rect.top - 110;
+
+        window.scrollTo({
+          top: Math.max(0, targetY),
+          behavior: 'smooth',
+        });
+
+        // Add bounce pulse highlight
+        el.classList.add('field-highlight-active');
+
+        // Focus element safely without browser auto-jump conflict
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+          (el as HTMLElement).focus({ preventScroll: true });
+        } else {
+          const focusable = el.querySelector<HTMLElement>('input, select, textarea, button');
+          if (focusable) {
+            focusable.focus({ preventScroll: true });
+          } else {
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+          }
+        }
+
+        // Clean up highlight when user interacts with the element or after 4.5 seconds
+        const cleanUp = () => {
+          el.classList.remove('field-highlight-active');
+          el.removeEventListener('input', cleanUp);
+          el.removeEventListener('change', cleanUp);
+          el.removeEventListener('click', cleanUp);
+        };
+
+        el.addEventListener('input', cleanUp, { once: true });
+        el.addEventListener('change', cleanUp, { once: true });
+        el.addEventListener('click', cleanUp, { once: true });
+
         setTimeout(() => {
-          el.classList.remove('ring-4', 'ring-rose-400', 'border-rose-500');
-        }, 3000);
+          el.classList.remove('field-highlight-active');
+        }, 4500);
       }
-    }, 150);
+    }, 120);
   };
+
 
   const handleProvinceChange = (newProvince: string) => {
     setProvince(newProvince);
@@ -303,6 +351,9 @@ export const SosForm: React.FC<SosFormProps> = ({
       ...prev,
       [field]: Math.max(0, prev[field] + delta)
     }));
+    if (formErrors.people) {
+      setFormErrors(prev => ({ ...prev, people: '' }));
+    }
   };
 
   // Handle Image Upload
@@ -321,12 +372,66 @@ export const SosForm: React.FC<SosFormProps> = ({
     }
   };
 
-  // Form Validation & Submit
+  // Form Validation & Submit (Ordered top-to-bottom according to UI form sections)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { [key: string]: string } = {};
     const missing: MissingFieldItem[] = [];
 
+    // 1. Location — Province (Section 2)
+    if (!province) {
+      errors.province = 'กรุณาเลือกจังหวัด';
+      missing.push({
+        id: 'missing-province',
+        fieldKey: 'province',
+        elementId: 'field-province',
+        label: 'จังหวัด',
+        message: 'ยังไม่ได้เลือกจังหวัด เพื่อให้ส่งเรื่องไปยังศูนย์กู้ภัยในพื้นที่',
+        severity: 'critical'
+      });
+    }
+
+    // 2. Location — District (Section 2)
+    if (!district) {
+      errors.district = 'กรุณาเลือกอำเภอ';
+      missing.push({
+        id: 'missing-district',
+        fieldKey: 'district',
+        elementId: 'field-district',
+        label: 'อำเภอ',
+        message: 'ยังไม่ได้เลือกอำเภอ สำหรับระบุพิกัดกู้ภัยประจำพื้นที่',
+        severity: 'critical'
+      });
+    }
+
+    // 3. Location — Landmark / Address (Section 2)
+    if (!address.trim() && !landmark.trim()) {
+      errors.address = 'กรุณาระบุบ้านเลขที่ ซอย หรือจุดสังเกตเด่น';
+      missing.push({
+        id: 'missing-landmark',
+        fieldKey: 'landmark',
+        elementId: 'field-landmark',
+        label: 'จุดสังเกตเด่น / ที่อยู่',
+        message: 'จำเป็นอย่างยิ่งในสถานการณ์น้ำท่วมเมื่อป้ายบ้านจมน้ำ (เช่น บ้านรั้วสีฟ้า หลังวัด)',
+        severity: 'critical'
+      });
+    }
+
+    // 4. People Count & Needs (Section 3)
+    const totalPeople = people.adults + people.elderly + people.bedridden + people.children + people.pets;
+    if (totalPeople === 0) {
+      errors.people = 'กรุณาระบุจำนวนผู้ติดค้างอย่างน้อย 1 คน';
+      missing.push({
+        id: 'missing-people',
+        fieldKey: 'people',
+        elementId: 'field-people',
+        label: 'จำนวนผู้ประสบภัยที่ติดค้าง',
+        message: 'ยังไม่ได้ระบุจำนวนผู้ติดค้าง เพื่อให้กู้ภัยจัดเตรียมเรือและขนาดทีมได้ถูกต้อง',
+        severity: 'warning'
+      });
+    }
+
+    // 5. Contact — Full Name (Section 4)
     if (!fullName.trim()) {
       errors.fullName = 'กรุณาระบุชื่อ-นามสกุล หรือชื่อเล่นผู้ติดต่อ';
       missing.push({
@@ -339,6 +444,7 @@ export const SosForm: React.FC<SosFormProps> = ({
       });
     }
 
+    // 6. Contact — Primary Phone (Section 4)
     if (!primaryPhone.trim()) {
       errors.primaryPhone = 'กรุณาระบุเบอร์โทรศัพท์ที่ติดต่อได้';
       missing.push({
@@ -358,55 +464,6 @@ export const SosForm: React.FC<SosFormProps> = ({
         label: 'เบอร์โทรศัพท์ไม่ถูกต้อง',
         message: 'รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง กรุณาตรวจสอบตัวเลข 9-10 หลัก',
         severity: 'critical'
-      });
-    }
-
-    if (!province) {
-      errors.province = 'กรุณาเลือกจังหวัด';
-      missing.push({
-        id: 'missing-province',
-        fieldKey: 'province',
-        elementId: 'field-province',
-        label: 'จังหวัด',
-        message: 'ยังไม่ได้เลือกจังหวัด เพื่อให้ส่งเรื่องไปยังศูนย์กู้ภัยในพื้นที่',
-        severity: 'critical'
-      });
-    }
-
-    if (!district) {
-      errors.district = 'กรุณาเลือกอำเภอ';
-      missing.push({
-        id: 'missing-district',
-        fieldKey: 'district',
-        elementId: 'field-district',
-        label: 'อำเภอ',
-        message: 'ยังไม่ได้เลือกอำเภอ สำหรับระบุพิกัดกู้ภัยประจำพื้นที่',
-        severity: 'critical'
-      });
-    }
-
-    if (!address.trim() && !landmark.trim()) {
-      errors.address = 'กรุณาระบุบ้านเลขที่ ซอย หรือจุดสังเกตเด่น';
-      missing.push({
-        id: 'missing-landmark',
-        fieldKey: 'landmark',
-        elementId: 'field-landmark',
-        label: 'จุดสังเกตเด่น / ที่อยู่',
-        message: 'จำเป็นอย่างยิ่งในสถานการณ์น้ำท่วมเมื่อป้ายบ้านจมน้ำ (เช่น บ้านรั้วสีฟ้า หลังวัด)',
-        severity: 'critical'
-      });
-    }
-
-    const totalPeople = people.adults + people.elderly + people.bedridden + people.children + people.pets;
-    if (totalPeople === 0) {
-      errors.people = 'กรุณาระบุจำนวนผู้ติดค้างอย่างน้อย 1 คน';
-      missing.push({
-        id: 'missing-people',
-        fieldKey: 'people',
-        elementId: 'field-people',
-        label: 'จำนวนผู้ประสบภัยที่ติดค้าง',
-        message: 'ยังไม่ได้ระบุจำนวนผู้ติดค้าง เพื่อให้กู้ภัยจัดเตรียมเรือและขนาดทีมได้ถูกต้อง',
-        severity: 'warning'
       });
     }
 
@@ -775,6 +832,13 @@ export const SosForm: React.FC<SosFormProps> = ({
               </div>
             ))}
           </div>
+
+          {formErrors.people && (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="size-4 shrink-0 text-rose-600" />
+              <span>{formErrors.people}</span>
+            </div>
+          )}
 
           <div className="mt-5">
             <span className="label">สิ่งของหรือความช่วยเหลือที่ต้องการ (เลือกได้หลายข้อ)</span>

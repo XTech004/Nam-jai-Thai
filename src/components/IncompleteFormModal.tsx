@@ -92,23 +92,24 @@ export const IncompleteFormModal: React.FC<IncompleteFormModalProps> = ({
         </div>
 
         {/* Missing Fields List */}
-        <div className="space-y-2 mb-5 max-h-72 overflow-y-auto pr-1">
+        <div className="space-y-2.5 mb-5 max-h-72 overflow-y-auto pr-1">
           {missingFields.map((item, index) => (
             <div
               key={item.id || index}
-              className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
+              onClick={() => onFixField(item.elementId)}
+              className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer hover:shadow-md hover:scale-[1.01] active:scale-[0.99] select-none ${
                 item.severity === 'critical'
-                  ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-                  : 'bg-amber-50/70 border-amber-200 text-amber-950'
+                  ? 'bg-rose-50/80 border-rose-200 text-rose-950 hover:bg-rose-100/70 hover:border-rose-300'
+                  : 'bg-amber-50/80 border-amber-200 text-amber-950 hover:bg-amber-100/70 hover:border-amber-300'
               }`}
             >
               <div className="flex items-start gap-2.5 min-w-0">
-                <span className="mt-0.5 shrink-0 rounded-xl bg-white p-1.5 shadow-2xs border border-rose-100">
+                <span className="mt-0.5 shrink-0 rounded-xl bg-white p-2 shadow-2xs border border-rose-100">
                   {getFieldIcon(item.fieldKey)}
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900">
+                    <span className="font-extrabold text-xs text-slate-900">
                       {item.label}
                     </span>
                     <span
@@ -129,11 +130,14 @@ export const IncompleteFormModal: React.FC<IncompleteFormModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => onFixField(item.elementId)}
-                className="shrink-0 px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 font-bold text-[11px] rounded-xl flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFixField(item.elementId);
+                }}
+                className="shrink-0 px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
-                <span>กรอกจุดนี้</span>
-                <ArrowRight className="size-3 text-rose-600" />
+                <span>เด้งไปกรอก</span>
+                <ArrowRight className="size-3.5" />
               </button>
             </div>
           ))}
@@ -144,15 +148,16 @@ export const IncompleteFormModal: React.FC<IncompleteFormModalProps> = ({
           <button
             type="button"
             onClick={handleFixFirst}
-            className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white font-bold text-xs shadow-md shadow-rose-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+            className="flex-1 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
           >
-            <span>✏️ ไปกรอกข้อมูลส่วนที่ขาดทันที</span>
+            <span>🎯 เด้งไปที่ช่องยังไม่กรอกทันที (จุดแรก)</span>
+            <ArrowRight className="size-4" />
           </button>
 
           <button
             type="button"
-            onClick={onClose}
-            className="py-3 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            onClick={handleFixFirst}
+            className="py-3.5 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
           >
             ปิด
           </button>

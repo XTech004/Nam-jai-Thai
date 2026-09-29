@@ -304,7 +304,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
 
           {/* Admin actions — collapsed behind one control */}
           {isAdmin && (
-            <div ref={adminMenuRef} className="mb-4 flex justify-end">
+            <div ref={adminMenuRef} className="relative mb-4 flex justify-end">
               <button
                 onClick={() => setShowAdminMenu(v => !v)}
                 className="chip border-slate-200 bg-white text-slate-600 shadow-xs hover:border-slate-300 hover:text-slate-900"
@@ -315,7 +315,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
               </button>
 
               {showAdminMenu && (
-                <div className="absolute z-20 mt-9 flex animate-fade flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[var(--shadow-lift)]">
+                <div className="absolute right-0 top-full z-20 mt-2 flex w-56 animate-fade flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[var(--shadow-lift)]">
                   {onDeleteAllCompleted && counts.completed > 0 && (
                     <button
                       onClick={() => {

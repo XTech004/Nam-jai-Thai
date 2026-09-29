@@ -249,6 +249,37 @@
   }
 }
 
+/* Eye-catching Bounce & Pulse animation for missing fields (เด้งไปที่ยังไม่กรอก) */
+@keyframes field-bounce-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7);
+  }
+  25% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 6px rgba(225, 29, 72, 0.45);
+  }
+  50% {
+    transform: scale(0.995);
+    box-shadow: 0 0 0 12px rgba(225, 29, 72, 0.15);
+  }
+  75% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 5px rgba(225, 29, 72, 0.35);
+  }
+}
+
+.field-highlight-active {
+  border-color: #e11d48 !important;
+  outline: 3px solid #e11d48 !important;
+  outline-offset: 3px !important;
+  background-color: #fff1f2 !important;
+  animation: field-bounce-pulse 1.1s ease-in-out infinite !important;
+  transition: all 0.25s ease !important;
+  border-radius: 0.875rem !important;
+}
+
+
 /* ============================================================
    Leaflet — blend the map into the card it lives in
    ============================================================ */
