@@ -18,10 +18,9 @@ interface NavbarProps {
   activeTab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide';
   setActiveTab: (tab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide') => void;
   requests: SOSRequest[];
-  onOpenDbConfig: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, requests, onOpenDbConfig }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, requests }) => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const isDbCloud = isSupabaseActive();
 
@@ -63,20 +62,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, request
           </a>
         </div>
         
-        {/* Database & Connectivity status */}
-        <div className="flex items-center gap-1.5 text-xs shrink-0 pl-2">
-          <button
-            onClick={onOpenDbConfig}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
-              isDbCloud
-                ? 'bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700 border border-emerald-500/40'
-                : 'bg-red-800 text-amber-200 hover:bg-red-700 border border-amber-400/30'
-            }`}
-            title="คลิกเพื่อดูหรือตั้งค่าฐานข้อมูล Supabase"
-          >
-            <Database className="w-3 h-3" />
-            <span>{isDbCloud ? 'Cloud DB' : 'Local DB'}</span>
-          </button>
+        {/* Status indicator (Read-only for security) */}
+        <div className="flex items-center gap-2 text-xs shrink-0 pl-2">
+          {isDbCloud ? (
+            <span className="inline-flex items-center gap-1 text-emerald-200 text-[11px] font-medium bg-red-700/60 px-2 py-0.5 rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>เซิร์ฟเวอร์ Real-time</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-200 text-[11px] font-medium bg-red-700/60 px-2 py-0.5 rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              <span>โหมดสำรอง (Local DB)</span>
+            </span>
+          )}
 
           {isOnline ? (
             <span className="inline-flex items-center gap-1 text-emerald-200">
@@ -127,14 +125,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, request
               <span>แจ้งขอความช่วยเหลือ</span>
             </button>
           )}
-
-          <button
-            onClick={onOpenDbConfig}
-            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 bg-slate-100 rounded-xl transition-colors border border-slate-200"
-            title="ตั้งค่าฐานข้อมูล Supabase"
-          >
-            <Database className="w-4 h-4" />
-          </button>
 
           <div className="hidden lg:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
             <span className="text-slate-600">เคสวิกฤตสีแดง:</span>

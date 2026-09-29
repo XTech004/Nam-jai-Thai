@@ -91,7 +91,6 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         requests={requests}
-        onOpenDbConfig={() => setIsDbModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -105,7 +104,6 @@ export function App() {
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
-            onResetMock={handleResetMock}
           />
         )}
 
@@ -232,6 +230,14 @@ export function App() {
             <span>สายด่วน ปภ. 1784</span>
             <span>การแพทย์ฉุกเฉิน 1669</span>
             <span>กู้ภัย 199</span>
+            {typeof window !== 'undefined' && window.location.search.includes('admin=1') && (
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className="text-slate-400 hover:text-slate-700 underline text-[11px]"
+              >
+                ⚙️ ตั้งค่าระบบ (Admin)
+              </button>
+            )}
           </div>
         </div>
       </footer>
