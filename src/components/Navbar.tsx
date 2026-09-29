@@ -21,6 +21,7 @@ interface NavbarProps {
   setActiveTab: (tab: 'form' | 'feed' | 'map' | 'hotlines' | 'guide') => void;
   requests: SOSRequest[];
   isAdmin?: boolean;
+  showAdminOption?: boolean;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
 }
@@ -30,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab, 
   requests,
   isAdmin = false,
+  showAdminOption = false,
   onOpenAdminLogin,
   onLogoutAdmin
 }) => {
@@ -86,34 +88,36 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Cloud Sync & Admin Controls */}
           <div className="flex items-center gap-2 text-[11px] shrink-0">
-            {isAdmin ? (
-              <div className="flex items-center gap-1 bg-purple-950/90 text-purple-200 px-2 py-0.5 rounded-md border border-purple-500/40 shadow-xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                <span className="font-semibold">แอดมิน</span>
-                {onLogoutAdmin && (
+            {showAdminOption && (
+              isAdmin ? (
+                <div className="flex items-center gap-1 bg-purple-950/90 text-purple-200 px-2 py-0.5 rounded-md border border-purple-500/40 shadow-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="font-semibold">แอดมิน</span>
+                  {onLogoutAdmin && (
+                    <button
+                      onClick={onLogoutAdmin}
+                      className="ml-1 text-purple-300 hover:text-white underline text-[10px] cursor-pointer"
+                      title="ออกจากโหมดแอดมิน"
+                    >
+                      ออก
+                    </button>
+                  )}
+                </div>
+              ) : (
+                onOpenAdminLogin && (
                   <button
-                    onClick={onLogoutAdmin}
-                    className="ml-1 text-purple-300 hover:text-white underline text-[10px] cursor-pointer"
-                    title="ออกจากโหมดแอดมิน"
+                    onClick={onOpenAdminLogin}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-amber-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer border border-amber-400/30"
+                    title="เข้าสู่โหมดแอดมิน"
                   >
-                    ออก
+                    <Shield className="w-3 h-3 text-amber-400" />
+                    <span>เข้าสู่ระบบแอดมิน</span>
                   </button>
-                )}
-              </div>
-            ) : (
-              onOpenAdminLogin && (
-                <button
-                  onClick={onOpenAdminLogin}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="เข้าสู่โหมดแอดมิน"
-                >
-                  <Shield className="w-3 h-3 text-slate-400" />
-                  <span>แอดมิน</span>
-                </button>
+                )
               )
             )}
 
-            <span className="text-slate-700 hidden sm:inline">|</span>
+            {showAdminOption && <span className="text-slate-700 hidden sm:inline">|</span>}
 
             {/* Realtime Status Indicator */}
             {isDbCloud ? (

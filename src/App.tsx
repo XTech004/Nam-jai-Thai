@@ -35,10 +35,37 @@ export function App() {
   const [submittedRequest, setSubmittedRequest] = useState<SOSRequest | null>(null);
   const [selectedCase, setSelectedCase] = useState<SOSRequest | null>(null);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+
+  // Check if admin=1 is present in URL
+  const [hasAdminUrl, setHasAdminUrl] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('admin') === '1' || window.location.search.includes('admin=1');
+  });
+
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return typeof window !== 'undefined' && localStorage.getItem('thai_flood_is_admin') === 'true';
   });
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+
+  // If visiting with ?admin=1 and not yet logged in, automatically open PIN login modal
+  useEffect(() => {
+    if (hasAdminUrl && !isAdmin) {
+      setIsAdminLoginOpen(true);
+    }
+  }, [hasAdminUrl, isAdmin]);
+
+  // Listen to popstate URL changes
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const hasParam = new URLSearchParams(window.location.search).get('admin') === '1' || window.location.search.includes('admin=1');
+      setHasAdminUrl(hasParam);
+    };
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, []);
+
+  // Admin access is strictly active only when ?admin=1 is in URL AND PIN is verified
+  const isEffectiveAdmin = hasAdminUrl && isAdmin;
 
   // Handle Delete Single Case (Admin)
   const handleDeleteCase = async (id: string) => {
@@ -69,6 +96,12 @@ export function App() {
   const handleLogoutAdmin = () => {
     localStorage.removeItem('thai_flood_is_admin');
     setIsAdmin(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('admin');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+      setHasAdminUrl(false);
+    }
   };
 
   // Load and subscribe to requests (Supabase Realtime or LocalStorage)
@@ -130,7 +163,8 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         requests={requests}
-        isAdmin={isAdmin}
+        isAdmin={isEffectiveAdmin}
+        showAdminOption={hasAdminUrl}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
       />
@@ -146,7 +180,7 @@ export function App() {
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
-            isAdmin={isAdmin}
+            isAdmin={isEffectiveAdmin}
             onDeleteCase={handleDeleteCase}
             onDeleteAllCompleted={handleDeleteAllCompleted}
             onClearAll={handleClearAll}
@@ -205,7 +239,7 @@ export function App() {
           request={selectedCase}
           onClose={() => setSelectedCase(null)}
           onUpdateStatus={handleUpdateStatus}
-          isAdmin={isAdmin}
+          isAdmin={isEffectiveAdmin}
           onDeleteCase={handleDeleteCase}
         />
       )}
@@ -298,7 +332,7 @@ export function App() {
             <span>สายด่วน ปภ. 1784</span>
             <span>การแพทย์ฉุกเฉิน 1669</span>
             <span>กู้ภัย 199</span>
-            {typeof window !== 'undefined' && window.location.search.includes('admin=1') && (
+            {hasAdminUrl && (
               <button
                 onClick={() => setIsDbModalOpen(true)}
                 className="text-slate-400 hover:text-slate-700 underline text-[11px]"
