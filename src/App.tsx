@@ -12,6 +12,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { UserAuthModal } from './components/UserAuthModal';
 import type { SOSRequest, RequestStatus, UserProfile } from './types/sos';
 import { getCurrentUser, logoutUser, USER_AUTH_EVENT } from './services/userService';
+import { initLiff, logoutLine } from './services/liffService';
 import { 
   fetchSOSRequests, 
   createSOSRequest, 
@@ -80,8 +81,21 @@ export function App() {
     return () => window.removeEventListener(USER_AUTH_EVENT, handleAuthChange);
   }, []);
 
+  // Initialize LINE LIFF SDK on mount
+  useEffect(() => {
+    initLiff().then(res => {
+      if (res.isLoggedIn && res.profile) {
+        const u = getCurrentUser();
+        if (u) setCurrentUser(u);
+      }
+    }).catch(err => {
+      console.warn('LINE LIFF init notice:', err);
+    });
+  }, []);
+
   // Handle User Logout
   const handleLogoutUser = () => {
+    logoutLine();
     logoutUser();
     setCurrentUser(null);
   };

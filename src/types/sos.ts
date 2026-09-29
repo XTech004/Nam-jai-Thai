@@ -70,4 +70,7 @@ export interface UserProfile {
   lastName: string;
   phone: string;
   registeredAt: string;
+  avatarUrl?: string;
+  lineUserId?: string;
+  loginMethod?: 'phone' | 'line';
 }

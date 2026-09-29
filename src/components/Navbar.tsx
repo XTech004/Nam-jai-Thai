@@ -177,9 +177,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* User Profile or Login Button */}
           {currentUser ? (
             <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs">
-              <UserIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              {currentUser.avatarUrl ? (
+                <img 
+                  src={currentUser.avatarUrl} 
+                  alt={currentUser.firstName} 
+                  className="w-4 h-4 rounded-full object-cover shrink-0 border border-emerald-500"
+                />
+              ) : (
+                <UserIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              )}
               <span className="hidden sm:inline">คุณ</span>
               <span className="font-bold max-w-[90px] sm:max-w-[120px] truncate">{currentUser.firstName}</span>
+              {currentUser.loginMethod === 'line' && (
+                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-300">
+                  LINE
+                </span>
+              )}
               {onLogoutUser && (
                 <button 
                   onClick={onLogoutUser}

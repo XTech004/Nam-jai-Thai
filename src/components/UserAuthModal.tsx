@@ -20,8 +20,10 @@ import {
   formatPhone, 
   requestOTP, 
   verifyOTP, 
-  registerOrLoginUser 
+  registerOrLoginUser,
+  getCurrentUser
 } from '../services/userService';
+import { loginWithLine } from '../services/liffService';
 
 interface UserAuthModalProps {
   isOpen: boolean;
@@ -51,8 +53,32 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successUser, setSuccessUser] = useState<UserProfile | null>(null);
+  const [isLineLoggingIn, setIsLineLoggingIn] = useState(false);
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Fast LINE Login Handler
+  const handleLineLogin = async () => {
+    setIsLineLoggingIn(true);
+    setErrorMessage('');
+    try {
+      await loginWithLine();
+      const user = getCurrentUser();
+      if (user) {
+        setSuccessUser(user);
+        setStep('SUCCESS');
+        setTimeout(() => {
+          if (onSuccess) onSuccess(user);
+          onClose();
+        }, 1200);
+      }
+    } catch (err: any) {
+      console.error('LINE login failed:', err);
+      setErrorMessage(err?.message || 'ไม่สามารถเชื่อมต่อ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setIsLineLoggingIn(false);
+    }
+  };
 
   // Reset state when modal opens
   useEffect(() => {
@@ -265,7 +291,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
           <div className="p-6 sm:p-7">
             
             {/* Header */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-5">
               <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-red-100 shadow-xs">
                 <User className="w-6 h-6" />
               </div>
@@ -273,8 +299,38 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                 เข้าสู่ระบบ / ลงทะเบียน
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                กรอกเบอร์โทรศัพท์เพื่อยืนยันตัวตนด้วยรหัส OTP
+                เข้าใช้งานสะดวกรวดเร็วด้วย LINE หรือเบอร์โทรศัพท์
               </p>
+            </div>
+
+            {/* Instant LINE Login Option */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={handleLineLogin}
+                disabled={isLineLoggingIn}
+                className="w-full py-3 px-4 rounded-2xl bg-[#06C755] hover:bg-[#05b34c] active:scale-98 text-white font-bold text-sm shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-60"
+              >
+                {isLineLoggingIn ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>กำลังเชื่อมต่อ LINE...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 5.82 2 10.53c0 2.94 1.76 5.53 4.45 6.99-.18.66-.66 2.39-.75 2.76-.12.45.16.44.34.32.14-.09 1.94-1.32 2.73-1.85.4.06.81.09 1.23.09 5.52 0 10-3.82 10-8.53S17.52 2 12 2z"/>
+                    </svg>
+                    <span>เข้าสู่ระบบด้วย LINE (คลิกเดียว)</span>
+                  </>
+                )}
+              </button>
+              
+              <div className="flex items-center gap-3 my-3.5">
+                <div className="h-px bg-slate-200 flex-1"></div>
+                <span className="text-[11px] font-semibold text-slate-400">หรือ ยืนยันด้วยเบอร์โทรศัพท์</span>
+                <div className="h-px bg-slate-200 flex-1"></div>
+              </div>
             </div>
 
             <form onSubmit={handleRequestOtpSubmit} className="space-y-4">

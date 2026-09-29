@@ -202,6 +202,62 @@ export async function registerOrLoginUser(
 }
 
 // ==========================================
+// LINE User Registration & Session
+// ==========================================
+
+export async function registerOrLoginLineUser(lineProfile: {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+}): Promise<UserProfile> {
+  const parts = lineProfile.displayName.trim().split(/\s+/);
+  const firstName = parts[0] || lineProfile.displayName;
+  const lastName = parts.slice(1).join(' ') || '';
+  const now = new Date().toISOString();
+  const userId = `LINE-${lineProfile.userId}`;
+
+  // Check if existing user with this LINE ID
+  const localUsers = getRegisteredUsers();
+  const existing = localUsers.find(u => u.lineUserId === lineProfile.userId || u.id === userId);
+
+  const profile: UserProfile = {
+    id: userId,
+    firstName: existing?.firstName || firstName,
+    lastName: existing?.lastName || lastName,
+    phone: existing?.phone || '',
+    registeredAt: existing?.registeredAt || now,
+    avatarUrl: lineProfile.pictureUrl,
+    lineUserId: lineProfile.userId,
+    loginMethod: 'line'
+  };
+
+  const currentUsers = localUsers.filter(u => u.id !== userId && u.lineUserId !== lineProfile.userId);
+  saveRegisteredUsers([profile, ...currentUsers]);
+  setCurrentUser(profile);
+
+  // Sync to Supabase if sos_users table is present
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from('sos_users').upsert({
+        id: userId,
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        phone: profile.phone || '',
+        avatar_url: profile.avatarUrl || '',
+        line_user_id: profile.lineUserId,
+        login_method: 'line',
+        updated_at: now
+      });
+    } catch (e) {
+      console.warn('Could not sync LINE user to Supabase:', e);
+    }
+  }
+
+  return profile;
+}
+
+// ==========================================
 // Realistic Interactive OTP Verification System
 // ==========================================
 

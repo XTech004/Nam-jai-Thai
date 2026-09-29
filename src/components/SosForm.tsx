@@ -105,8 +105,11 @@ export const SosForm: React.FC<SosFormProps> = ({
       if (!fullName) {
         setFullName(`${currentUser.firstName} ${currentUser.lastName}`.trim());
       }
-      if (!primaryPhone) {
+      if (!primaryPhone && currentUser.phone) {
         setPrimaryPhone(currentUser.phone);
+      }
+      if (!lineId && currentUser.loginMethod === 'line') {
+        setLineId(currentUser.firstName);
       }
     }
   }, [currentUser]);
