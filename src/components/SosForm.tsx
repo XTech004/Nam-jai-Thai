@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   MapPin, 
   AlertOctagon, 
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
+import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
@@ -54,6 +55,32 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
   const [province, setProvince] = useState<string>('');
   const [district, setDistrict] = useState<string>('');
   const [subDistrict, setSubDistrict] = useState<string>('');
+
+  // Thai Address Cascading Dropdowns
+  const availableProvinces = useMemo(() => getProvinces(), []);
+  const availableDistricts = useMemo(() => getDistricts(province), [province]);
+  const availableSubDistricts = useMemo(() => getSubDistricts(province, district), [province, district]);
+
+  const handleProvinceChange = (newProvince: string) => {
+    setProvince(newProvince);
+    setDistrict('');
+    setSubDistrict('');
+    if (formErrors.province) {
+      setFormErrors(prev => ({ ...prev, province: '' }));
+    }
+  };
+
+  const handleDistrictChange = (newDistrict: string) => {
+    setDistrict(newDistrict);
+    setSubDistrict('');
+    if (formErrors.district) {
+      setFormErrors(prev => ({ ...prev, district: '' }));
+    }
+  };
+
+  const handleSubDistrictChange = (newSubDistrict: string) => {
+    setSubDistrict(newSubDistrict);
+  };
   const [address, setAddress] = useState<string>('');
   const [landmark, setLandmark] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -419,21 +446,26 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
             )}
           </div>
 
-          {/* Address fields */}
+          {/* Address fields: Cascading Dropdowns (Province -> District -> Subdistrict) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 จังหวัด <span className="text-red-600">*</span>
               </label>
-              <input
-                type="text"
-                placeholder="เช่น เชียงราย, หนองคาย, สุโขทัย"
+              <select
                 value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                onChange={(e) => handleProvinceChange(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm bg-white focus:outline-none focus:ring-2 cursor-pointer font-medium ${
                   formErrors.province ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-red-400'
                 }`}
-              />
+              >
+                <option value="">-- เลือกจังหวัด (77 จังหวัด) --</option>
+                {availableProvinces.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
               {formErrors.province && <p className="text-[11px] text-red-600 mt-1">{formErrors.province}</p>}
             </div>
 
@@ -441,15 +473,23 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 อำเภอ <span className="text-red-600">*</span>
               </label>
-              <input
-                type="text"
-                placeholder="เช่น แม่สาย, เมือง, ท่าบ่อ"
+              <select
                 value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                disabled={!province}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm bg-white focus:outline-none focus:ring-2 cursor-pointer font-medium disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed ${
                   formErrors.district ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:ring-red-400'
                 }`}
-              />
+              >
+                <option value="">
+                  {province ? `-- เลือกอำเภอ (${availableDistricts.length} อำเภอ) --` : '-- กรุณาเลือกจังหวัดก่อน --'}
+                </option>
+                {availableDistricts.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
               {formErrors.district && <p className="text-[11px] text-red-600 mt-1">{formErrors.district}</p>}
             </div>
           </div>
@@ -457,13 +497,21 @@ export const SosForm: React.FC<SosFormProps> = ({ onSubmitSuccess }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">ตำบล / แขวง</label>
-              <input
-                type="text"
-                placeholder="เช่น เวียงพางคำ, ริมกก"
+              <select
                 value={subDistrict}
-                onChange={(e) => setSubDistrict(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-              />
+                disabled={!district}
+                onChange={(e) => handleSubDistrictChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-400 cursor-pointer font-medium disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {district ? `-- เลือกตำบล / แขวง (${availableSubDistricts.length} ตำบล) --` : '-- กรุณาเลือกอำเภอก่อน --'}
+                </option>
+                {availableSubDistricts.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
