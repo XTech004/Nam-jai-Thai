@@ -77,17 +77,16 @@ export function getLocalStoredRequests(): SOSRequest[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_REQUESTS));
-      return INITIAL_MOCK_REQUESTS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
-    return INITIAL_MOCK_REQUESTS;
+    return [];
   } catch (e) {
     console.error('Failed to read localStorage:', e);
-    return INITIAL_MOCK_REQUESTS;
+    return [];
   }
 }
 
@@ -121,16 +120,13 @@ export async function fetchSOSRequests(): Promise<SOSRequest[]> {
         return getLocalStoredRequests();
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const mapped = data.map(toSOSRequest);
         // Cache locally for offline capability
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mapped));
         return mapped;
-      } else {
-        // Table is empty in Supabase, seed initial mock cases
-        await seedSupabaseInitialData();
-        return fetchSOSRequests();
       }
+      return [];
     } catch (err) {
       console.warn('Network error reaching Supabase, using local cache:', err);
       return getLocalStoredRequests();
@@ -261,6 +257,28 @@ export async function deleteCompletedSOSRequests(): Promise<SOSRequest[]> {
   return updatedLocal;
 }
 
+export async function clearAllSOSRequests(): Promise<SOSRequest[]> {
+  const supabase = getSupabaseClient();
+  saveToLocalStorage([]);
+
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('sos_requests')
+        .delete()
+        .neq('id', 'NONE');
+
+      if (error) {
+        console.error('Error clearing all requests from Supabase:', error.message);
+      }
+    } catch (err) {
+      console.error('Exception clearing all requests from Supabase:', err);
+    }
+  }
+
+  return [];
+}
+
 export async function resetSOSRequestsToMock(): Promise<SOSRequest[]> {
   const supabase = getSupabaseClient();
   saveToLocalStorage(INITIAL_MOCK_REQUESTS);
@@ -281,15 +299,8 @@ export async function resetSOSRequestsToMock(): Promise<SOSRequest[]> {
 }
 
 async function seedSupabaseInitialData(): Promise<void> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return;
-
-  try {
-    const rows = INITIAL_MOCK_REQUESTS.map(toDBRow);
-    await supabase.from('sos_requests').upsert(rows);
-  } catch (e) {
-    console.error('Error seeding initial data to Supabase:', e);
-  }
+  // Permanently disabled: do not automatically seed mock data
+  return;
 }
 
 // ==========================================

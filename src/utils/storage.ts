@@ -7,18 +7,16 @@ export function getStoredRequests(): SOSRequest[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Seed with initial mock requests
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_MOCK_REQUESTS));
-      return INITIAL_MOCK_REQUESTS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
-    return INITIAL_MOCK_REQUESTS;
+    return [];
   } catch (e) {
     console.error('Failed to load SOS requests from localStorage', e);
-    return INITIAL_MOCK_REQUESTS;
+    return [];
   }
 }
 

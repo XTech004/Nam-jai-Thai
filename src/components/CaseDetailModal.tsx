@@ -299,12 +299,12 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
               <span>{isSaved ? '✓ บันทึกข้อมูลเรียบร้อยแล้ว' : 'บันทึกการเปลี่ยนแปลงสถานะ'}</span>
             </button>
 
-            {isAdmin && request.status === 'COMPLETED' && onDeleteCase && (
+            {isAdmin && onDeleteCase && (
               <div className="mt-3 pt-3 border-t border-slate-200 flex justify-end">
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเคส "${request.fullName}" (รหัส: ${request.id}) ที่ช่วยเหลือสำเร็จแล้วออกจากระบบ?`)) {
+                    if (window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเคส "${request.fullName}" (รหัส: ${request.id}) ออกจากระบบ?`)) {
                       onDeleteCase(request.id);
                       onClose();
                     }

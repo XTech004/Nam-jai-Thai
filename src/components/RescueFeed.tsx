@@ -28,6 +28,7 @@ interface RescueFeedProps {
   isAdmin?: boolean;
   onDeleteCase?: (id: string) => void;
   onDeleteAllCompleted?: () => void;
+  onClearAll?: () => void;
 }
 
 export const RescueFeed: React.FC<RescueFeedProps> = ({
@@ -37,7 +38,8 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   onResetMock,
   isAdmin = false,
   onDeleteCase,
-  onDeleteAllCompleted
+  onDeleteAllCompleted,
+  onClearAll
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
@@ -111,14 +113,10 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {isAdmin && onDeleteAllCompleted && (
+          {isAdmin && onDeleteAllCompleted && requests.some(r => r.status === 'COMPLETED') && (
             <button
               onClick={() => {
                 const count = requests.filter(r => r.status === 'COMPLETED').length;
-                if (count === 0) {
-                  alert('ไม่มีเคสที่ช่วยเหลือสำเร็จแล้วให้ลบ');
-                  return;
-                }
                 if (window.confirm(`คุณต้องการลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (${count} เคส) ออกจากระบบหรือไม่?`)) {
                   onDeleteAllCompleted();
                 }
@@ -127,7 +125,22 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
               className="text-xs text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all font-semibold cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>ลบเคสสำเร็จแล้วทั้งหมด ({requests.filter(r => r.status === 'COMPLETED').length})</span>
+              <span>ลบเคสสำเร็จแล้ว ({requests.filter(r => r.status === 'COMPLETED').length})</span>
+            </button>
+          )}
+
+          {isAdmin && onClearAll && requests.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm(`⚠️ คำเตือน: คุณต้องการล้างข้อมูลทั้งหมดในระบบให้ว่างเปล่า (${requests.length} เคส) หรือไม่?\n\nข้อมูลจะถูกล้างออกจากฐานข้อมูลอย่างถาวร เพื่อให้ระบบโล่งพร้อมใช้งานจริง`)) {
+                  onClearAll();
+                }
+              }}
+              title="ล้างข้อมูลทั้งหมดให้ระบบว่างเปล่า/โล่ง (เฉพาะแอดมิน)"
+              className="text-xs text-white bg-red-600 hover:bg-red-700 border border-red-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-all font-bold cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>ล้างกระดานให้โล่ง ({requests.length})</span>
             </button>
           )}
 
@@ -247,7 +260,17 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
       </div>
 
       {/* Case List Feed */}
-      {filteredRequests.length === 0 ? (
+      {requests.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300 p-8 shadow-sm">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-8 h-8" />
+          </div>
+          <h3 className="font-bold text-slate-800 text-lg">ยังไม่มีรายการแจ้งขอความช่วยเหลือในระบบ</h3>
+          <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+            กระดานว่างเปล่าและพร้อมใช้งานจริง ข้อมูลที่ประชาชนแจ้งผ่านหน้า "แจ้ง SOS ด่วน" จะปรากฏขึ้นที่นี่แบบเรียลไทม์ทันที
+          </p>
+        </div>
+      ) : filteredRequests.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 p-6">
           <AlertTriangle className="w-12 h-12 text-slate-300 mx-auto mb-2" />
           <h3 className="font-bold text-slate-700 text-base">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</h3>
@@ -417,26 +440,25 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                       </button>
                     )}
                     {req.status === 'COMPLETED' && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
-                          <CheckCircle className="w-3.5 h-3.5" /> สำเร็จแล้ว
-                        </span>
-                        {isAdmin && onDeleteCase && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`คุณต้องการลบเคส "${req.fullName}" (รหัส: ${req.id}) ออกจากระบบหรือไม่?`)) {
-                                onDeleteCase(req.id);
-                              }
-                            }}
-                            title="ลบเคสที่ช่วยเหลือสำเร็จแล้วนี้ (เฉพาะแอดมิน)"
-                            className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 border border-red-200 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>ลบเคส</span>
-                          </button>
-                        )}
-                      </div>
+                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                        <CheckCircle className="w-3.5 h-3.5" /> สำเร็จแล้ว
+                      </span>
+                    )}
+
+                    {isAdmin && onDeleteCase && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`คุณต้องการลบเคส "${req.fullName}" (รหัส: ${req.id}) ออกจากระบบหรือไม่?`)) {
+                            onDeleteCase(req.id);
+                          }
+                        }}
+                        title="ลบเคสนี้ออกจากระบบ (เฉพาะแอดมิน)"
+                        className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1 border border-red-200 cursor-pointer ml-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>ลบเคส</span>
+                      </button>
                     )}
                   </div>
                 </div>

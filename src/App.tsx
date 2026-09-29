@@ -16,6 +16,7 @@ import {
   updateSOSRequestStatus, 
   deleteSOSRequest,
   deleteCompletedSOSRequests,
+  clearAllSOSRequests,
   resetSOSRequestsToMock,
   subscribeToSOSChanges
 } from './services/db';
@@ -55,6 +56,13 @@ export function App() {
     if (selectedCase && selectedCase.status === 'COMPLETED') {
       setSelectedCase(null);
     }
+  };
+
+  // Handle Clear All Cases to make system blank (Admin)
+  const handleClearAll = async () => {
+    const updated = await clearAllSOSRequests();
+    setRequests(updated);
+    setSelectedCase(null);
   };
 
   // Handle Admin Logout
@@ -141,6 +149,7 @@ export function App() {
             isAdmin={isAdmin}
             onDeleteCase={handleDeleteCase}
             onDeleteAllCompleted={handleDeleteAllCompleted}
+            onClearAll={handleClearAll}
           />
         )}
 
