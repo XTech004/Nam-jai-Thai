@@ -1,37 +1,33 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  X, 
-  MapPin, 
-  Phone, 
-  Navigation, 
-  Users, 
-  Package, 
-  AlertTriangle, 
-  Clock, 
-  CheckCircle, 
-  Copy, 
-  Share2, 
-  Edit3, 
-  Save, 
-  MessageSquare,
+import {
+  X,
+  MapPin,
+  Phone,
+  Navigation,
+  Users,
+  Package,
+  AlertTriangle,
+  Clock,
+  Copy,
+  Share2,
+  Edit3,
+  Save,
   Trash2,
   Lock,
   ShieldCheck,
-  ShieldAlert,
   CloudRain,
   Sparkles,
-  TrendingUp,
-  Droplets
+  TrendingUp
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
-import { 
-  formatThaiDateTime, 
-  getUrgencyInfo, 
-  getWaterLevelInfo, 
-  getStatusInfo, 
-  getGoogleMapsUrl 
+import {
+  formatThaiDateTime,
+  getUrgencyInfo,
+  getWaterLevelInfo,
+  getStatusInfo,
+  getGoogleMapsUrl
 } from '../utils/formatters';
-import { buildSosShareText, copyToClipboard, getLineShareUrl, getSmsLink } from '../utils/shareHelpers';
+import { buildSosShareText, copyToClipboard, getLineShareUrl } from '../utils/shareHelpers';
 import { getWeatherNext3Forecast } from '../services/weatherAiService';
 import { maskPhone } from '../utils/privacy';
 
@@ -44,7 +40,12 @@ interface CaseDetailModalProps {
   onRequestAdminLogin?: () => void;
 }
 
-export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
+export const CaseDetailModal: React.FC<CaseDetailModalProps> = props => {
+  if (!props.request) return null;
+  return <CaseDetailView {...props} request={props.request} />;
+};
+
+const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> = ({
   request,
   onClose,
   onUpdateStatus,
@@ -52,8 +53,6 @@ export const CaseDetailModal: React.FC<CaseDetailModalProps> = ({
   onDeleteCase,
   onRequestAdminLogin
 }) => {
-  if (!request) return null;
-
   const [copied, setCopied] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<RequestStatus>(request.status);
   const [responderNotes, setResponderNotes] = useState<string>(request.responderNotes || '');

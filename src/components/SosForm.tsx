@@ -640,15 +640,17 @@ export const SosForm: React.FC<SosFormProps> = ({
             onOpenUserAuth && (
               <div className="mb-4 flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[11px] leading-snug text-slate-600">
-                  เข้าสู่ระบบด้วย LINE หรือ OTP เพื่อเพิ่มความน่าเชื่อถือของเคส
+                  💡 แนะนำ: เข้าสู่ระบบด้วย LINE เพื่อดึงชื่ออัตโนมัติและเพิ่มความน่าเชื่อถือให้เคส
                 </span>
                 <button
                   type="button"
                   onClick={onOpenUserAuth}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:border-emerald-300 hover:text-emerald-700"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100 cursor-pointer shadow-2xs"
                 >
-                  <UserRound className="size-3.5" />
-                  เข้าสู่ระบบ (LINE / OTP)
+                  <svg className="size-3.5 fill-[#06C755]" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 5.82 2 10.53c0 2.94 1.76 5.53 4.45 6.99-.18.66-.66 2.39-.75 2.76-.12.45.16.44.34.32.14-.09 1.94-1.32 2.73-1.85.4.06.81.09 1.23.09 5.52 0 10-3.82 10-8.53S17.52 2 12 2z"/>
+                  </svg>
+                  <span>เข้าสู่ระบบด้วย LINE</span>
                 </button>
               </div>
             )

@@ -2,23 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { SOSRequest } from '../types/sos';
-import { getUrgencyInfo, getWaterLevelInfo, getGoogleMapsUrl, formatThaiDateTime } from '../utils/formatters';
+import { getUrgencyInfo, getWaterLevelInfo, getGoogleMapsUrl } from '../utils/formatters';
 import { maskPhone } from '../utils/privacy';
 import { getGistdaFloodZones, type GistdaFloodZone } from '../services/weatherAiService';
-import { 
-  MapPin, 
-  Navigation, 
-  Phone, 
-  Filter, 
-  Maximize2, 
-  Layers, 
-  CloudRain, 
-  Waves, 
+import {
+  MapPin,
+  Map as MapIcon,
+  Maximize2,
+  Layers,
+  CloudRain,
+  Waves,
   Sparkles,
-  Info,
-  ShieldAlert,
-  Eye,
-  EyeOff
+  Satellite,
+  LocateFixed
 } from 'lucide-react';
 
 interface RescueMapProps {
@@ -27,73 +23,70 @@ interface RescueMapProps {
   isAdmin?: boolean;
 }
 
-export const RescueMap: React.FC<RescueMapProps> = ({ 
-  requests, 
-  onSelectCase,
-  isAdmin = false 
-}) => {
+const URGENCY_FILTERS = [
+  { id: 'ALL', label: 'ทั้งหมด', dot: 'bg-slate-400' },
+  { id: 'CRITICAL', label: 'วิกฤต', dot: 'bg-rose-500' },
+  { id: 'URGENT', label: 'เร่งด่วน', dot: 'bg-amber-500' },
+  { id: 'NORMAL', label: 'ทั่วไป', dot: 'bg-emerald-500' }
+] as const;
+
+const THAI_URGENCY: Record<SOSRequest['urgency'], string> = {
+  CRITICAL: 'วิกฤต',
+  URGENT: 'เร่งด่วน',
+  NORMAL: 'ทั่วไป'
+};
+
+const RADAR_CELLS = [
+  { center: [20.38, 99.88] as [number, number], radius: 28000, label: 'พายุฝนตกหนักรุนแรง', mm: 52, color: '#9333ea' },
+  { center: [19.9, 99.85] as [number, number], radius: 32000, label: 'ฝนตกหนักต่อเนื่อง', mm: 42, color: '#dc2626' },
+  { center: [18.82, 99.02] as [number, number], radius: 26000, label: 'ฝนตกปานกลาง-หนัก', mm: 28, color: '#f59e0b' },
+  { center: [19.18, 99.9] as [number, number], radius: 24000, label: 'ฝนตกต่อเนื่อง', mm: 22, color: '#3b82f6' },
+  { center: [17.15, 99.8] as [number, number], radius: 30000, label: 'ฝนตกปานกลาง', mm: 19, color: '#06b6d4' }
+];
+
+export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, isAdmin = false }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  
-  // Layer Groups
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const gistdaLayerRef = useRef<L.LayerGroup | null>(null);
-  const weatherRadarLayerRef = useRef<L.LayerGroup | null>(null);
+  const radarLayerRef = useRef<L.LayerGroup | null>(null);
 
-  // States
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
   const [mapType, setMapType] = useState<'streets' | 'satellite'>('streets');
-  const [showGistda, setShowGistda] = useState<boolean>(true);
-  const [showWeatherRadar, setShowWeatherRadar] = useState<boolean>(true);
-  const [showSosMarkers, setShowSosMarkers] = useState<boolean>(true);
-  const [activeZoneDetail, setActiveZoneDetail] = useState<GistdaFloodZone | null>(null);
+  const [showGistda, setShowGistda] = useState(true);
+  const [showRadar, setShowRadar] = useState(true);
+  const [showMarkers, setShowMarkers] = useState(true);
+  const [activeZone, setActiveZone] = useState<GistdaFloodZone | null>(null);
 
-  // Filter requests
   const filteredRequests = requests.filter(r => {
     if (urgencyFilter !== 'ALL' && r.urgency !== urgencyFilter) return false;
     return true;
   });
 
-  // Initialize Map
+  // Init map
   useEffect(() => {
-    if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return;
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Center on Northern Thailand where flood activity is highest
     const map = L.map(mapContainerRef.current, {
       center: [19.2, 99.8],
       zoom: 8,
-      zoomControl: true,
+      zoomControl: true
     });
 
-    // Base Street Layer
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap | GISTDA Satellite | Google DeepMind WeatherNext 3',
+    baseTileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap | GISTDA | ThaiFlood SOS',
       maxZoom: 19,
+      zIndex: 1
     }).addTo(map);
-    baseTileLayerRef.current = streetLayer;
 
-    // Create Layer Groups
-    const gistdaGroup = L.layerGroup().addTo(map);
-    gistdaLayerRef.current = gistdaGroup;
-
-    const radarGroup = L.layerGroup().addTo(map);
-    weatherRadarLayerRef.current = radarGroup;
-
-    const markersGroup = L.layerGroup().addTo(map);
-    markersLayerRef.current = markersGroup;
-
+    gistdaLayerRef.current = L.layerGroup().addTo(map);
+    radarLayerRef.current = L.layerGroup().addTo(map);
+    markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
 
-    // Fix container sizing when mounted in tabs
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 250);
-
-    const handleResize = () => {
-      map.invalidateSize();
-    };
+    const timer = setTimeout(() => map.invalidateSize(), 250);
+    const handleResize = () => map.invalidateSize();
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -104,454 +97,374 @@ export const RescueMap: React.FC<RescueMapProps> = ({
     };
   }, []);
 
-  // Update Base Tile (Streets vs Satellite)
+  // Base tiles: roads vs satellite imagery
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
+    if (!map) return;
 
     if (baseTileLayerRef.current) {
       map.removeLayer(baseTileLayerRef.current);
     }
 
-    if (mapType === 'satellite') {
-      baseTileLayerRef.current = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-          attribution: '&copy; Esri & GISTDA Satellite Imagery | ThaiFlood SOS',
-          maxZoom: 18,
-        }
-      ).addTo(map);
-    } else {
-      baseTileLayerRef.current = L.tileLayer(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        {
-          attribution: '&copy; OpenStreetMap | GISTDA | ThaiFlood SOS',
-          maxZoom: 19,
-          zIndex: 1,
-        }
-      ).addTo(map);
-    }
+    baseTileLayerRef.current =
+      mapType === 'satellite'
+        ? L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: '&copy; Esri & GISTDA | ThaiFlood SOS', maxZoom: 18, zIndex: 1 }
+          )
+        : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap | GISTDA | ThaiFlood SOS',
+            maxZoom: 19,
+            zIndex: 1
+          });
+
+    baseTileLayerRef.current.addTo(map);
   }, [mapType]);
 
-  // Render GISTDA Satellite Flood Extent Polygons
+  // GISTDA satellite flood extent polygons
   useEffect(() => {
-    if (!gistdaLayerRef.current) return;
     const layer = gistdaLayerRef.current;
+    if (!layer) return;
     layer.clearLayers();
-
     if (!showGistda) return;
 
-    const floodZones = getGistdaFloodZones();
-
-    floodZones.forEach((zone) => {
-      // Create colored polygon
+    getGistdaFloodZones().forEach(zone => {
       const polygon = L.polygon(zone.polygon, {
         color: zone.strokeColor,
         fillColor: zone.fillColor,
-        fillOpacity: 0.42,
-        weight: 2.5,
-        dashArray: zone.hazardLevel === 'CRITICAL' ? '4, 4' : undefined,
+        fillOpacity: 0.38,
+        weight: 2,
+        dashArray: zone.hazardLevel === 'CRITICAL' ? '5, 5' : undefined
       });
 
-      const popupContent = `
-        <div style="font-family: sans-serif; font-size: 12px; min-width: 230px; line-height: 1.45;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <span style="font-size: 10px; font-weight: bold; background: #581c87; color: #f3e8ff; padding: 2px 6px; rounded: 4px; border-radius: 4px;">
-              🛰️ GISTDA Satellite
-            </span>
-            <span style="font-size: 10px; font-weight: bold; color: ${zone.strokeColor};">
-              ${zone.hazardLevel === 'CRITICAL' ? '⚠️ วิกฤตระดับสูงสุด' : '⚡ เฝ้าระวังน้ำท่วม'}
+      const escape = (value: string) =>
+        value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      polygon.bindPopup(`
+        <div style="min-width:230px;max-width:250px;padding:12px 14px;font-size:12px;line-height:1.5;color:#334155;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:10px;font-weight:700;background:#f3e8ff;color:#6b21a8;padding:2px 7px;border-radius:999px;">GISTDA Satellite</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:700;color:${zone.strokeColor};">
+              ${zone.hazardLevel === 'CRITICAL' ? 'วิกฤตสูงสุด' : 'เฝ้าระวัง'}
             </span>
           </div>
-
-          <h4 style="font-weight: bold; font-size: 13px; color: #0f172a; margin: 0 0 4px 0;">
-            ${zone.name}
-          </h4>
-
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; margin: 6px 0;">
-            <div style="font-size: 11px; color: #475569;">ความลึกน้ำท่วมประเมิน:</div>
-            <div style="font-size: 13px; font-weight: 800; color: ${zone.strokeColor};">
-              🌊 ${zone.depthEstimate}
-            </div>
+          <div style="font-weight:800;font-size:14px;color:#0f172a;margin-bottom:6px;">${escape(zone.name)}</div>
+          <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:6px 9px;margin-bottom:6px;">
+            <span style="font-size:10px;color:#6b21a8;">ระดับน้ำท่วมประเมิน</span>
+            <div style="font-size:13px;font-weight:800;color:${zone.strokeColor};">${escape(zone.depthEstimate)}</div>
           </div>
-
-          <p style="font-size: 11px; color: #334155; margin: 4px 0;">
-            ${zone.description}
-          </p>
-
-          <div style="border-top: 1px solid #f1f5f9; padding-top: 4px; margin-top: 6px; font-size: 10px; color: #64748b;">
-            ดาวเทียม: ${zone.satelliteSensor} • ${zone.detectionDate}
+          <p style="margin:0 0 6px;color:#475569;">${escape(zone.description)}</p>
+          <div style="border-top:1px solid #f1f5f9;padding-top:5px;font-size:10px;color:#94a3b8;">
+            ${escape(zone.satelliteSensor)} · ${escape(zone.detectionDate)}
           </div>
         </div>
-      `;
+      `);
 
-      polygon.bindPopup(popupContent);
-      polygon.on('click', () => {
-        setActiveZoneDetail(zone);
-      });
-
+      polygon.on('click', () => setActiveZone(zone));
       layer.addLayer(polygon);
     });
   }, [showGistda]);
 
-  // Render Google DeepMind WeatherNext 3 Precipitation Radar Cells
+  // WeatherNext 3 precipitation radar cells
   useEffect(() => {
-    if (!weatherRadarLayerRef.current) return;
-    const radarGroup = weatherRadarLayerRef.current;
-    radarGroup.clearLayers();
+    const layer = radarLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!showRadar) return;
 
-    if (!showWeatherRadar) return;
-
-    // Simulated WeatherNext 3 Hourly Precipitation Radar Storm Cells across Northern/Central Basins
-    const radarStormCells: Array<{
-      center: [number, number];
-      radiusKm: number;
-      rainIntensity: string;
-      rainMmH: number;
-      fillColor: string;
-    }> = [
-      { center: [20.38, 99.88], radiusKm: 28000, rainIntensity: 'พายุฝนตกหนักรุนแรง', rainMmH: 52, fillColor: '#9333ea' },
-      { center: [19.90, 99.85], radiusKm: 32000, rainIntensity: 'ฝนตกหนักต่อเนื่อง', rainMmH: 42, fillColor: '#dc2626' },
-      { center: [18.82, 99.02], radiusKm: 26000, rainIntensity: 'ฝนตกปานกลาง-หนัก', rainMmH: 28, fillColor: '#f59e0b' },
-      { center: [19.18, 99.90], radiusKm: 24000, rainIntensity: 'ฝนตกต่อเนื่อง', rainMmH: 22, fillColor: '#3b82f6' },
-      { center: [17.15, 99.80], radiusKm: 30000, rainIntensity: 'ฝนตกปานกลาง', rainMmH: 19, fillColor: '#06b6d4' },
-    ];
-
-    radarStormCells.forEach(cell => {
+    RADAR_CELLS.forEach(cell => {
       const circle = L.circle(cell.center, {
-        radius: cell.radiusKm,
-        color: cell.fillColor,
-        fillColor: cell.fillColor,
-        fillOpacity: 0.22,
-        weight: 1.5,
+        radius: cell.radius,
+        color: cell.color,
+        fillColor: cell.color,
+        fillOpacity: 0.18,
+        weight: 1.5
       });
 
-      const tooltipContent = `
-        <div style="font-family: sans-serif; font-size: 11px;">
-          <b>🌧️ เรดาร์ AI WeatherNext 3</b><br/>
-          สถานะ: ${cell.rainIntensity}<br/>
-          ความเข้มฝน: <b>${cell.rainMmH} มม./ชม.</b>
-        </div>
-      `;
-      circle.bindTooltip(tooltipContent, { sticky: true });
+      circle.bindTooltip(
+        `<div style="font-size:11px;line-height:1.5;">
+           <b>เรดาร์ฝน AI (WeatherNext 3)</b><br/>
+           ${cell.label}<br/>
+           ความเข้มฝน: <b>${cell.mm} มม./ชม.</b>
+         </div>`,
+        { sticky: true }
+      );
 
-      radarGroup.addLayer(circle);
+      layer.addLayer(circle);
     });
-  }, [showWeatherRadar]);
+  }, [showRadar]);
 
-  // Update SOS Markers when requests or filter change
+  // SOS markers
   useEffect(() => {
-    if (!mapInstanceRef.current || !markersLayerRef.current) return;
-
     const markersGroup = markersLayerRef.current;
-    markersGroup.clearLayers();
+    if (!markersGroup) return;
 
-    if (!showSosMarkers) return;
+    markersGroup.clearLayers();
+    if (!showMarkers) return;
 
     const bounds: [number, number][] = [];
+    const escape = (value: string) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    filteredRequests.forEach((req) => {
+    filteredRequests.forEach(req => {
       const { lat, lng } = req.coordinates;
       if (!lat || !lng) return;
-
       bounds.push([lat, lng]);
 
       const urgency = getUrgencyInfo(req.urgency);
       const water = getWaterLevelInfo(req.waterLevel);
-
-      // Custom SVG DivIcon
       const isCritical = req.urgency === 'CRITICAL';
-      const markerHtml = `
-        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-          ${
-            isCritical
-              ? `<span style="position: absolute; width: 34px; height: 34px; border-radius: 50%; background-color: rgba(220, 38, 38, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>`
-              : ''
-          }
-          <div style="
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background-color: ${urgency.markerColor};
-            border: 2.5px solid #ffffff;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: bold;
-          ">
-            ${isCritical ? '🚨' : req.urgency === 'URGENT' ? '⚡' : '🆘'}
-          </div>
-        </div>
-      `;
+      const isDone = req.status === 'COMPLETED';
+      const pinColor = isDone ? '#64748b' : urgency.markerColor;
+      const totalPeople =
+        req.people.adults + req.people.elderly + req.people.bedridden + req.people.children;
+      const shownPhone = isAdmin ? req.primaryPhone : maskPhone(req.primaryPhone);
 
-      const customIcon = L.divIcon({
-        html: markerHtml,
-        className: 'custom-sos-marker',
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
-        popupAnchor: [0, -17],
+      const marker = L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: 'custom-flood-pin',
+          html: `
+            <div style="position:relative;display:grid;place-items:center;width:36px;height:36px;">
+              ${
+                isCritical
+                  ? '<span style="position:absolute;width:36px;height:36px;border-radius:9999px;background:rgba(225,29,72,0.35);animation:ping 1.6s cubic-bezier(0,0,0.2,1) infinite;"></span>'
+                  : ''
+              }
+              <div style="
+                position:relative;width:24px;height:24px;border-radius:9999px;
+                background:${pinColor};border:2.5px solid #ffffff;
+                box-shadow:0 6px 14px -4px rgba(15,23,42,0.55);
+                display:flex;align-items:center;justify-content:center;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 21s7-4.35 7-10a7 7 0 1 0-14 0c0 5.65 7 10 7 10z"></path>
+                </svg>
+              </div>
+            </div>
+          `,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          popupAnchor: [0, -20]
+        })
       });
 
-      const marker = L.marker([lat, lng], { icon: customIcon });
-
-      const displayedPhone = isAdmin ? req.primaryPhone : maskPhone(req.primaryPhone);
-
-      const popupHtml = `
-        <div style="font-family: sans-serif; font-size: 12px; min-width: 230px; line-height: 1.4;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="font-weight: bold; background: #0f172a; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: monospace;">
-              ${req.id}
-            </span>
-            <span style="font-size: 11px; font-weight: bold; color: ${urgency.markerColor};">
-              ${urgency.shortLabel}
-            </span>
+      marker.bindPopup(`
+        <div style="min-width:230px;max-width:260px;padding:12px 14px;font-size:12px;line-height:1.5;color:#334155;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:${pinColor};"></span>
+            <span style="font-weight:700;color:${pinColor};">${THAI_URGENCY[req.urgency]}</span>
+            <span style="margin-left:auto;background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;">${escape(req.id)}</span>
           </div>
 
-          <h3 style="font-weight: bold; font-size: 14px; margin: 4px 0 2px 0; color: #0f172a;">
-            ${req.fullName}
-          </h3>
+          <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:4px;">${escape(req.fullName)}</div>
 
-          <p style="color: #475569; margin: 2px 0 6px 0; font-size: 11px;">
-            📍 ${req.address} ต.${req.subDistrict || '-'} อ.${req.district} จ.${req.province}
-          </p>
+          <div style="color:#475569;margin-bottom:6px;">${escape(req.address || '')} ต.${escape(req.subDistrict || '-')} อ.${escape(req.district)} จ.${escape(req.province)}</div>
 
           ${
             req.landmark
-              ? `<div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 4px 6px; border-radius: 6px; font-size: 11px; color: #92400e; margin-bottom: 6px;">
-                  🚩 <b>จุดสังเกต:</b> ${req.landmark}
-                </div>`
+              ? `<div style="background:#fffbeb;border:1px solid #fde68a;color:#78350f;border-radius:10px;padding:5px 8px;margin-bottom:8px;font-size:11px;">จุดสังเกต: ${escape(req.landmark)}</div>`
               : ''
           }
 
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px;">
-            <span>ระดับน้ำ: <b>${water.label}</b></span>
-            <span>ติดค้าง: <b>${req.people.adults + req.people.elderly + req.people.bedridden + req.people.children} คน</b></span>
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#64748b;">
+            <span>ระดับน้ำ <b style="color:#0f172a;">${escape(water.label)}</b></span>
+            <span>ติดค้าง <b style="color:#0f172a;">${totalPeople} คน</b></span>
           </div>
 
-          <div style="display: flex; gap: 4px; margin-top: 8px;">
-            <a href="tel:${req.primaryPhone}" style="flex: 1; text-align: center; background: #059669; color: white; padding: 6px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 11px;">
-              📞 โทร (${displayedPhone})
-            </a>
-            <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" style="flex: 1; text-align: center; background: #2563eb; color: white; padding: 6px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 11px;">
-              🗺️ นำทาง
-            </a>
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <a href="tel:${escape(req.primaryPhone)}" style="flex:1;text-align:center;background:#059669;color:#fff;padding:7px;border-radius:999px;text-decoration:none;font-weight:700;font-size:11px;">โทร ${escape(shownPhone)}</a>
+            <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" rel="noreferrer" style="flex:1;text-align:center;background:#0f172a;color:#fff;padding:7px;border-radius:999px;text-decoration:none;font-weight:700;font-size:11px;">นำทาง</a>
           </div>
         </div>
-      `;
+      `);
 
-      marker.bindPopup(popupHtml);
-      marker.on('click', () => {
-        onSelectCase(req);
-      });
-
+      marker.on('click', () => onSelectCase(req));
       markersGroup.addLayer(marker);
     });
 
-    // Fit Bounds if markers exist
     if (bounds.length > 0 && mapInstanceRef.current) {
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      mapInstanceRef.current.fitBounds(bounds, { padding: [56, 56], maxZoom: 14 });
     }
-  }, [filteredRequests, showSosMarkers, isAdmin, onSelectCase]);
+  }, [filteredRequests, showMarkers, isAdmin, onSelectCase]);
 
   const handleFitAll = () => {
-    if (!mapInstanceRef.current || filteredRequests.length === 0) return;
-    const bounds: [number, number][] = filteredRequests.map(r => [r.coordinates.lat, r.coordinates.lng]);
-    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+    if (!mapInstanceRef.current) return;
+    const bounds = filteredRequests
+      .filter(r => r.coordinates.lat && r.coordinates.lng)
+      .map(r => [r.coordinates.lat, r.coordinates.lng] as [number, number]);
+    if (bounds.length > 0) {
+      mapInstanceRef.current.fitBounds(bounds, { padding: [56, 56], maxZoom: 14 });
+    }
   };
 
+  const layerToggles = [
+    { key: 'gistda', label: 'GISTDA', icon: Waves, on: showGistda, toggle: () => setShowGistda(v => !v), onClass: 'border-violet-200 bg-violet-50 text-violet-700' },
+    { key: 'radar', label: 'เรดาร์ฝน AI', icon: CloudRain, on: showRadar, toggle: () => setShowRadar(v => !v), onClass: 'border-sky-200 bg-sky-50 text-sky-700' },
+    { key: 'markers', label: `หมุด SOS (${filteredRequests.length})`, icon: MapPin, on: showMarkers, toggle: () => setShowMarkers(v => !v), onClass: 'border-rose-200 bg-rose-50 text-rose-700' }
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-      
-      {/* Top Intelligence Ribbon: WeatherNext 3 & GISTDA Info */}
-      <div className="mb-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-3.5 sm:p-4 rounded-3xl shadow-lg border border-indigo-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 text-cyan-400 flex items-center justify-center shrink-0 border border-indigo-400/30 shadow-inner">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-white">
-                แผนที่บูรณาการภัยพิบัติอัจฉริยะ (Satellite & AI Map)
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">
-                WeatherNext 3 (DeepMind)
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-300 border border-purple-400/30">
-                GISTDA Satellite
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-0.5">
-              แสดงภาพถ่ายดาวเทียมตรวจจับผิวน้ำท่วมขัง ซ้อนทับกับเรดาร์พยากรณ์ฝนรายชั่วโมง (ความละเอียด 5 กม.)
-            </p>
-          </div>
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
+
+      <header className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="page-title flex items-center gap-2.5">
+            <MapIcon className="size-5 text-slate-400" />
+            แผนที่พิกัดผู้ประสบอุทกภัย
+          </h2>
+          <p className="page-subtitle flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>แตะที่หมุดเพื่อดูรายละเอียด โทรติดต่อ หรือเปิดระบบนำทาง</span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600">
+              <Sparkles className="size-3" />
+              WeatherNext 3 + GISTDA
+            </span>
+          </p>
         </div>
 
-        {/* Layer Controls Switchers */}
-        <div className="flex items-center gap-1.5 flex-wrap self-end md:self-auto">
-          {/* GISTDA Toggle */}
-          <button
-            onClick={() => setShowGistda(!showGistda)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              showGistda 
-                ? 'bg-purple-600 text-white border-purple-400 shadow-xs' 
-                : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white'
-            }`}
-          >
-            <Waves className="w-3.5 h-3.5" />
-            <span>ดาวเทียม GISTDA</span>
-          </button>
+        {/* Layer switches */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {layerToggles.map(({ key, label, icon: Icon, on, toggle, onClass }) => (
+            <button
+              key={key}
+              onClick={toggle}
+              aria-pressed={on}
+              className={`chip ${on ? onClass : 'chip-idle'} ${
+                on ? 'border' : ''
+              }`}
+            >
+              <Icon className="size-3.5" />
+              {label}
+            </button>
+          ))}
 
-          {/* WeatherNext 3 Toggle */}
           <button
-            onClick={() => setShowWeatherRadar(!showWeatherRadar)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              showWeatherRadar 
-                ? 'bg-cyan-600 text-white border-cyan-400 shadow-xs' 
-                : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white'
-            }`}
+            onClick={() => setMapType(t => (t === 'streets' ? 'satellite' : 'streets'))}
+            className="chip border border-slate-200 bg-white text-slate-600 shadow-xs hover:border-slate-300 hover:text-slate-900"
           >
-            <CloudRain className="w-3.5 h-3.5" />
-            <span>เรดาร์ฝน AI</span>
-          </button>
-
-          {/* SOS Markers Toggle */}
-          <button
-            onClick={() => setShowSosMarkers(!showSosMarkers)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              showSosMarkers 
-                ? 'bg-red-600 text-white border-red-400 shadow-xs' 
-                : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white'
-            }`}
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>หมุด SOS ({filteredRequests.length})</span>
-          </button>
-
-          {/* Map Base Type */}
-          <button
-            onClick={() => setMapType(mapType === 'streets' ? 'satellite' : 'streets')}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>{mapType === 'streets' ? '🛰️ ภาพดาวเทียม' : '🗺️ แผนที่ถนน'}</span>
+            {mapType === 'streets' ? <Satellite className="size-3.5" /> : <Layers className="size-3.5" />}
+            {mapType === 'streets' ? 'ภาพดาวเทียม' : 'แผนที่ถนน'}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Map Container */}
-      <div className="bg-white p-2 rounded-3xl border border-slate-200/90 shadow-xl relative overflow-hidden">
-        
-        {/* Floating Urgency Filter Bar (Top of Map) */}
-        <div className="absolute top-4 left-4 z-20 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-md flex items-center gap-1 text-xs">
-          <span className="text-[11px] font-bold text-slate-500 px-2 hidden sm:inline">กรองเหตุ:</span>
-          <button
-            onClick={() => setUrgencyFilter('ALL')}
-            className={`px-2.5 py-1 rounded-xl font-semibold transition-colors cursor-pointer ${
-              urgencyFilter === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            ทั้งหมด
-          </button>
-          <button
-            onClick={() => setUrgencyFilter('CRITICAL')}
-            className={`px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer ${
-              urgencyFilter === 'CRITICAL' ? 'bg-red-600 text-white' : 'text-red-700 hover:bg-red-50'
-            }`}
-          >
-            🔴 วิกฤต
-          </button>
-          <button
-            onClick={() => setUrgencyFilter('URGENT')}
-            className={`px-2.5 py-1 rounded-xl font-semibold transition-colors cursor-pointer ${
-              urgencyFilter === 'URGENT' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-amber-800 hover:bg-amber-50'
-            }`}
-          >
-            🟡 เร่งด่วน
-          </button>
-          <button
-            onClick={handleFitAll}
-            className="ml-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
-            title="ซูมพอดีทุกหมุด"
-          >
-            <Maximize2 className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* Leaflet Map Div */}
-        <div 
-          ref={mapContainerRef} 
-          style={{ width: '100%', height: '620px', minHeight: '520px' }}
-          className="w-full rounded-2xl z-10" 
+      {/* Map */}
+      <div className="surface relative overflow-hidden p-1.5">
+        <div
+          ref={mapContainerRef}
+          style={{ width: '100%', height: 'clamp(420px, 68vh, 720px)' }}
+          className="rounded-2xl"
         />
 
-        {/* Comprehensive Flood & Weather Legend (Bottom Left) */}
-        <div className="absolute bottom-5 left-5 z-20 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200/90 shadow-xl text-xs space-y-2 max-w-[280px]">
-          <div className="font-extrabold text-slate-900 text-[11px] uppercase tracking-wider flex items-center justify-between border-b border-slate-100 pb-1.5">
-            <span>คำอธิบายสัญลักษณ์แผนที่</span>
-            <span className="text-[10px] text-slate-400 font-normal">v3.2</span>
-          </div>
+        {/* Floating urgency filter */}
+        <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white/92 p-1 shadow-[var(--shadow-soft)] backdrop-blur-md">
+          {URGENCY_FILTERS.map(f => {
+            const isActive = urgencyFilter === f.id;
+            const value = f.id === 'ALL' ? requests.length : requests.filter(r => r.urgency === f.id).length;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setUrgencyFilter(f.id)}
+                aria-pressed={isActive}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  isActive ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`size-2 rounded-full ${f.dot} ${isActive ? 'ring-2 ring-white/30' : ''}`} />
+                {f.label}
+                <span className="tabular-nums opacity-60">{value}</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={handleFitAll}
+            disabled={filteredRequests.length === 0}
+            title="ซูมพอดีทุกหมุด"
+            className="ml-0.5 grid size-6 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40"
+          >
+            <Maximize2 className="size-3.5" />
+          </button>
+        </div>
 
-          {/* GISTDA Satellite Flood Depth Tiers */}
-          <div>
-            <div className="font-bold text-[10px] text-purple-900 mb-1 flex items-center gap-1">
-              <Waves className="w-3 h-3 text-purple-600" />
-              <span>ระดับน้ำท่วมดาวเทียม (GISTDA)</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1 text-[10px]">
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-purple-700 border border-purple-900 shrink-0"></span>
-                <span>ม่วง: ลึก &gt; 1.8 ม. (มิดชั้น 1)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-red-600 border border-red-800 shrink-0"></span>
-                <span>แดง: ลึก 1.2 - 2.0 ม.</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-amber-500 border border-amber-700 shrink-0"></span>
-                <span>ส้ม: ลึก 0.8 - 1.4 ม.</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-sky-500 border border-sky-700 shrink-0"></span>
-                <span>ฟ้า: ท่วมผิวจราจร</span>
-              </div>
-            </div>
-          </div>
-
-          {/* WeatherNext 3 Precipitation Radar */}
-          <div className="border-t border-slate-100 pt-1.5">
-            <div className="font-bold text-[10px] text-cyan-900 mb-1 flex items-center gap-1">
-              <CloudRain className="w-3 h-3 text-cyan-600" />
-              <span>เรดาร์ฝน AI (WeatherNext 3)</span>
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-600 px-0.5">
-              <span>ฝนเบาบาง</span>
-              <div className="h-2 w-28 rounded-full bg-gradient-to-r from-sky-400 via-amber-400 to-purple-600"></div>
-              <span>พายุฝนหนัก</span>
+        {showMarkers && filteredRequests.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center">
+            <div className="rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 text-center shadow-[var(--shadow-lift)] backdrop-blur">
+              <p className="text-[13px] font-semibold text-slate-700">ยังไม่มีเคสในตัวกรองนี้</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">ลองเลือก "ทั้งหมด" เพื่อดูพิกัดทุกเคส</p>
             </div>
           </div>
+        )}
 
-          {/* SOS Markers */}
-          <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-[10px]">
-            <div className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-              <span className="font-bold text-red-700">วิกฤต</span>
+        {/* Legend */}
+        <div className="pointer-events-none absolute bottom-5 left-5 z-20 hidden w-56 rounded-2xl border border-slate-200 bg-white/92 p-3 shadow-[var(--shadow-soft)] backdrop-blur-md sm:block">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">คำอธิบายสัญลักษณ์</p>
+
+          <div className="mb-2">
+            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-violet-700">
+              <Waves className="size-3" />
+              ผิวน้ำท่วมจากดาวเทียม (GISTDA)
+            </p>
+            <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {[
+                { swatch: 'bg-violet-700', label: 'ลึก > 1.8 ม.' },
+                { swatch: 'bg-rose-600', label: '1.2 – 2.0 ม.' },
+                { swatch: 'bg-amber-500', label: '0.8 – 1.4 ม.' },
+                { swatch: 'bg-sky-500', label: 'ท่วมผิวจราจร' }
+              ].map(item => (
+                <li key={item.label} className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                  <span className={`size-2.5 shrink-0 rounded-sm ${item.swatch}`} />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mb-2 border-t border-slate-100 pt-2">
+            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-sky-700">
+              <CloudRain className="size-3" />
+              เรดาร์ฝน AI
+            </p>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <span>เบาบาง</span>
+              <span className="h-1.5 flex-1 rounded-full bg-gradient-to-r from-sky-400 via-amber-400 to-purple-600" />
+              <span>พายุหนัก</span>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-              <span className="font-semibold text-amber-700">เร่งด่วน</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-              <span className="font-medium text-emerald-700">ทั่วไป</span>
-            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-2">
+            <p className="mb-1 text-[10px] font-bold text-slate-700">หมุดเคส SOS</p>
+            <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {[
+                { swatch: 'bg-rose-500', label: 'วิกฤต' },
+                { swatch: 'bg-amber-500', label: 'เร่งด่วน' },
+                { swatch: 'bg-emerald-500', label: 'ทั่วไป' },
+                { swatch: 'bg-slate-400', label: 'สำเร็จแล้ว' }
+              ].map(item => (
+                <li key={item.label} className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                  <span className={`size-2.5 shrink-0 rounded-full ring-2 ring-white ${item.swatch}`} />
+                  {item.label}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
+        {/* Selected satellite zone detail */}
+        {activeZone && (
+          <button
+            onClick={() => setActiveZone(null)}
+            className="absolute bottom-5 right-5 z-20 max-w-xs animate-fade rounded-2xl border border-violet-200 bg-white/95 p-3 text-left shadow-[var(--shadow-lift)] backdrop-blur-md"
+          >
+            <span className="mb-1 inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700">
+              <LocateFixed className="size-3" />
+              เขตเฝ้าระวังน้ำท่วม
+            </span>
+            <span className="block text-[12px] font-bold text-slate-900">{activeZone.name}</span>
+            <span className="mt-0.5 block text-[11px] text-slate-600">{activeZone.description}</span>
+            <span className="mt-1 block text-[10px] text-slate-400">
+              {activeZone.depthEstimate} · แตะเพื่อปิด
+            </span>
+          </button>
+        )}
       </div>
-
     </div>
   );
 };

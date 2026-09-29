@@ -9,7 +9,6 @@ import {
   Flag,
   CheckCircle,
   CheckCircle2,
-  Copy,
   Trash2,
   SlidersHorizontal,
   OctagonAlert,

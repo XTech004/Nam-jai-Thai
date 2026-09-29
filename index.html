@@ -3,17 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#dc2626" />
-    <meta name="description" content="ระบบแจ้งขอความช่วยเหลือฉุกเฉินน้ำท่วม และศูนย์ประสานงานกู้ภัยฉุกเฉิน (ThaiFlood SOS)" />
-    <title>ThaiFlood SOS - ระบบแจ้งขอความช่วยเหลือฉุกเฉินน้ำท่วม</title>
-    <!-- Google Fonts for Thai Language Support -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+    <meta
+      name="description"
+      content="ThaiFlood SOS — ระบบแจ้งขอความช่วยเหลือฉุกเฉินน้ำท่วม และศูนย์ประสานงานกู้ภัยแบบเรียลไทม์ ส่งพิกัด GPS ให้ทีมกู้ภัยเข้าถึงจุดเกิดเหตุได้ทันที"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ThaiFlood SOS — แจ้งขอความช่วยเหลือฉุกเฉินน้ำท่วม" />
+    <meta
+      property="og:description"
+      content="แจ้งเหตุฉุกเฉินพร้อมพิกัด GPS ให้ทีมกู้ภัยและจิตอาสาเข้าถึงคุณได้เร็วที่สุด"
+    />
+    <title>ThaiFlood SOS — ระบบแจ้งขอความช่วยเหลือฉุกเฉินน้ำท่วม</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Map tiles -->
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://{s}.tile.openstreetmap.org" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   </head>
-  <body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen selection:bg-red-500 selection:text-white">
+  <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-rose-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

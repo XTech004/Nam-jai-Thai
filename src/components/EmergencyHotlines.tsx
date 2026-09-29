@@ -1,7 +1,39 @@
-import { useState } from 'react';
-import { Phone, Shield, Ambulance, Truck, Search, PhoneCall, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Phone,
+  Shield,
+  Ambulance,
+  Truck,
+  Search,
+  PhoneCall,
+  Zap,
+  X,
+  type LucideIcon
+} from 'lucide-react';
 import { EMERGENCY_CONTACTS } from '../data/mockData';
 import type { EmergencyContact } from '../types/sos';
+
+const CATEGORY_TABS = [
+  { id: 'all', label: 'ทั้งหมด' },
+  { id: 'medical', label: 'การแพทย์' },
+  { id: 'rescue', label: 'กู้ภัย' },
+  { id: 'national', label: 'ศูนย์ประสานงาน' },
+  { id: 'utility', label: 'สาธารณูปโภค' }
+];
+
+const ICONS: Record<EmergencyContact['iconType'], LucideIcon> = {
+  ambulance: Ambulance,
+  shield: Shield,
+  truck: Truck,
+  utility: Zap,
+  phone: Phone
+};
+
+const QUICK_DIALS = [
+  { phone: '1784', label: 'สายด่วนนิรภัย ปภ.', desc: 'แจ้งอุทกภัย กู้ภัยทั่วประเทศ', icon: Shield, tone: 'from-rose-500 to-red-700' },
+  { phone: '1669', label: 'การแพทย์ฉุกเฉิน', desc: 'ผู้ป่วยวิกฤต เจ็บป่วยฉุกเฉิน', icon: Ambulance, tone: 'from-emerald-500 to-teal-700' },
+  { phone: '199', label: 'ดับเพลิง & กู้ภัย', desc: 'บรรเทาสาธารณภัย ค้นหาคน', icon: Truck, tone: 'from-sky-500 to-indigo-700' }
+];
 
 export const EmergencyHotlines: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -20,144 +52,119 @@ export const EmergencyHotlines: React.FC = () => {
     return true;
   });
 
-  const getIcon = (type: EmergencyContact['iconType']) => {
-    switch (type) {
-      case 'ambulance':
-        return <Ambulance className="w-5 h-5 text-red-600" />;
-      case 'shield':
-        return <Shield className="w-5 h-5 text-blue-600" />;
-      case 'truck':
-        return <Truck className="w-5 h-5 text-amber-600" />;
-      case 'utility':
-        return <Zap className="w-5 h-5 text-yellow-600" />;
-      default:
-        return <Phone className="w-5 h-5 text-emerald-600" />;
-    }
-  };
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-      
-      {/* Header */}
-      <div className="text-center mb-6">
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center justify-center gap-2">
-          <PhoneCall className="w-7 h-7 text-red-600" />
-          <span>รวมเบอร์สายด่วนฉุกเฉินน้ำท่วม</span>
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:py-8">
+
+      <header className="mb-6 text-center">
+        <h2 className="page-title flex items-center justify-center gap-2.5">
+          <PhoneCall className="size-6 text-rose-600" />
+          เบอร์สายด่วนฉุกเฉิน
         </h2>
-        <p className="text-xs sm:text-sm text-slate-600 mt-1">
-          โทรฟรีได้ตลอด 24 ชั่วโมง ทุกเครือข่ายมือถือ (แม้ไม่มีเงินในซิม)
+        <p className="page-subtitle">
+          โทรฟรีตลอด 24 ชั่วโมง ทุกเครือข่ายมือถือ (แม้ไม่มีเงินในซิม)
         </p>
-      </div>
+      </header>
 
-      {/* Quick Dial Top 3 Callouts */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <a
-          href="tel:1784"
-          className="p-4 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white shadow-md hover:shadow-lg transition-transform active:scale-98 flex items-center justify-between group"
-        >
-          <div>
-            <span className="text-xs font-semibold text-red-200">สายด่วนนิรภัย ปภ.</span>
-            <div className="text-2xl font-black">1784</div>
-            <span className="text-[11px] text-red-100">แจ้งอุทกภัย กู้ภัยทั่วประเทศ</span>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Phone className="w-6 h-6" />
-          </div>
-        </a>
-
-        <a
-          href="tel:1669"
-          className="p-4 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md hover:shadow-lg transition-transform active:scale-98 flex items-center justify-between group"
-        >
-          <div>
-            <span className="text-xs font-semibold text-emerald-200">การแพทย์ฉุกเฉิน (สพฉ.)</span>
-            <div className="text-2xl font-black">1669</div>
-            <span className="text-[11px] text-emerald-100">ผู้ป่วยวิกฤต เจ็บป่วยฉุกเฉิน</span>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Ambulance className="w-6 h-6" />
-          </div>
-        </a>
-
-        <a
-          href="tel:199"
-          className="p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md hover:shadow-lg transition-transform active:scale-98 flex items-center justify-between group"
-        >
-          <div>
-            <span className="text-xs font-semibold text-blue-200">ดับเพลิง & กู้ภัยทางน้ำ</span>
-            <div className="text-2xl font-black">199</div>
-            <span className="text-[11px] text-blue-100">บรรเทาสาธารณภัย ค้นหาคน</span>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Truck className="w-6 h-6" />
-          </div>
-        </a>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm mb-4 space-y-3">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="ค้นหาเบอร์ หรือหน่วยงาน..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-slate-50"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          {[
-            { id: 'all', label: 'ทั้งหมด' },
-            { id: 'medical', label: 'การแพทย์ & ผู้ป่วย' },
-            { id: 'rescue', label: 'กู้ภัย & สาธารณภัย' },
-            { id: 'national', label: 'ศูนย์ประสานงานรัฐ' },
-            { id: 'utility', label: 'ไฟฟ้า & น้ำประปา' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setCategoryFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                categoryFilter === tab.id
-                  ? 'bg-slate-900 text-white font-bold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contact Cards List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {filteredContacts.map((contact, index) => (
-          <div
-            key={index}
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex items-start justify-between gap-3"
+      {/* One-tap dials */}
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {QUICK_DIALS.map(({ phone, label, desc, icon: Icon, tone }) => (
+          <a
+            key={phone}
+            href={`tel:${phone}`}
+            className={`group flex items-center justify-between gap-3 rounded-3xl bg-gradient-to-br ${tone} p-4 text-white shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-lift)] active:scale-[0.98]`}
           >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
-                {getIcon(contact.iconType)}
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-sm leading-snug">{contact.name}</h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{contact.desc}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold opacity-80">{label}</p>
+              <p className="text-2xl font-black leading-tight tabular-nums">{phone}</p>
+              <p className="mt-0.5 truncate text-[11px] opacity-75">{desc}</p>
             </div>
-
-            <a
-              href={`tel:${contact.phone}`}
-              className="shrink-0 px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-extrabold text-sm flex items-center gap-1.5 transition-colors active:scale-95"
-            >
-              <Phone className="w-4 h-4" />
-              <span>{contact.phone}</span>
-            </a>
-          </div>
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/20 transition-transform duration-200 group-hover:scale-110">
+              <Icon className="size-5" />
+            </span>
+          </a>
         ))}
       </div>
 
+      {/* Search + category filter */}
+      <div className="surface mb-4 p-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ค้นหาเบอร์ หรือหน่วยงาน..."
+            className="field bg-slate-50 pl-9 pr-9"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              aria-label="ล้างคำค้นหา"
+              className="absolute right-2.5 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full bg-slate-200 text-slate-500 transition-colors hover:bg-slate-300"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {CATEGORY_TABS.map(tab => {
+            const isActive = categoryFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setCategoryFilter(tab.id)}
+                aria-pressed={isActive}
+                className={`chip ${
+                  isActive ? 'border-slate-900 bg-slate-900 text-white' : 'chip-idle'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Contact list */}
+      {filteredContacts.length === 0 ? (
+        <div className="surface p-12 text-center">
+          <Search className="mx-auto mb-2 size-8 text-slate-300" />
+          <p className="text-sm font-semibold text-slate-600">ไม่พบเบอร์ที่ตรงกับคำค้นหา</p>
+        </div>
+      ) : (
+        <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {filteredContacts.map(contact => {
+            const Icon = ICONS[contact.iconType];
+            return (
+              <li key={contact.phone}>
+                <a
+                  href={`tel:${contact.phone}`}
+                  className="group flex h-full items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[var(--shadow-lift)] active:scale-[0.99]"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-rose-50 group-hover:text-rose-600">
+                    <Icon className="size-4" />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-bold leading-snug text-slate-900">
+                      {contact.name}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-500">
+                      {contact.desc}
+                    </span>
+                  </span>
+
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[12px] font-extrabold tabular-nums text-slate-800 transition-colors group-hover:border-rose-600 group-hover:bg-rose-600 group-hover:text-white">
+                    <Phone className="size-3.5" />
+                    {contact.phone}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 };

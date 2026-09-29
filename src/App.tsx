@@ -234,6 +234,7 @@ export function App() {
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
             isAdmin={isEffectiveAdmin}
+            onResetMock={handleResetMock}
             onDeleteCase={handleDeleteCase}
             onDeleteAllCompleted={handleDeleteAllCompleted}
             onClearAll={handleClearAll}
