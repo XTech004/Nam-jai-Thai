@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>โครงร่างเล่มรายงานโครงงานจบการศึกษา - น้ำใจไทย (Nam-jai-Thai)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 14mm 14mm 14mm 18mm;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Sarabun', 'Leelawadee UI', Tahoma, sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      color: #1e293b;
+      background: #ffffff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    h1, h2, h3, h4 {
+      font-family: 'Prompt', 'Sarabun', Tahoma, sans-serif;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.3;
+    }
+    
+    /* Cover / Header section */
+    .header-card {
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px 24px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      margin-bottom: 24px;
+      border-left: 6px solid #e11d48;
+    }
+    .badge-primary {
+      display: inline-block;
+      background: #e11d48;
+      color: #ffffff;
+      font-family: 'Prompt', sans-serif;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .badge-info {
+      display: inline-block;
+      background: #0284c7;
+      color: #ffffff;
+      font-family: 'Prompt', sans-serif;
+      font-size: 8pt;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-right: 6px;
+    }
+    .project-title {
+      font-size: 17pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .project-sub {
+      font-size: 11pt;
+      color: #475569;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 9.5pt;
+      color: #334155;
+      padding-top: 10px;
+      border-top: 1px dashed #cbd5e1;
+    }
+
+    /* Chapter container */
+    .chapter-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      page-break-inside: avoid;
+    }
+    .chapter-header {
+      background: #f8fafc;
+      padding: 10px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 12px 12px 0 0;
+    }
+    .chapter-title {
+      font-size: 12.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chapter-badge {
+      background: #0f172a;
+      color: #fff;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .chapter-content {
+      padding: 14px 18px;
+    }
+
+    /* Section list */
+    .section-list {
+      list-style: none;
+    }
+    .section-item {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #f1f5f9;
+    }
+    .section-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .section-head {
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 10.5pt;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .section-desc {
+      font-size: 9.5pt;
+      color: #475569;
+      padding-left: 22px;
+      line-height: 1.5;
+    }
+    .bullet-point {
+      color: #e11d48;
+      font-weight: bold;
+    }
+
+    /* Tag pills */
+    .tag {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 8pt;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      margin: 2px 2px 0 0;
+    }
+
+    /* Summary table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 8.5pt;
+      color: #94a3b8;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover / Header Section -->
+  <div class="header-card">
+    <span class="badge-primary">Senior Project Outline Framework</span>
+    <h1 class="project-title">โครงร่างเล่มรายงานโครงงานจบการศึกษา (5 บท)</h1>
+    <div class="project-sub">ระบบศูนย์กลางประสานงานกู้ภัยและขอความช่วยเหลือผู้ประสบอุทกภัยฉุกเฉิน "น้ำใจไทย" (Nam-jai-Thai)</div>
+    <div class="meta-grid">
+      <div><b>สาขาวิชา:</b> วิศวกรรมคอมพิวเตอร์ / วิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ</div>
+      <div><b>ปีการศึกษา:</b> 2569 (2026)</div>
+      <div><b>Production URL:</b> https://nam-jai-thai.vercel.app</div>
+      <div><b>GitHub Repository:</b> github.com/XTech004/Nam-jai-Thai</div>
+    </div>
+  </div>
+
+  <!-- Preliminary Section -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">ส่วนนำ</span>
+        <span>ส่วนประกอบตอนต้น (Preliminary Pages)</span>
+      </div>
+      <span class="tag">มาตรฐานบัณฑิตวิทยาลัย</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.</span> ปกนอก / ปกใน (Cover Pages)</div>
+          <div class="section-desc">ชื่อโครงงาน (ไทย/อังกฤษ), ชื่อผู้จัดทำ, อาจารย์ที่ปรึกษา, ภาควิชา, คณะ, สถาบันการศึกษา และปีการศึกษา</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.</span> ใบรับรองโครงงาน (Approval Form)</div>
+          <div class="section-desc">ลายเซ็นคณะกรรมการสอบโครงงาน, อาจารย์ที่ปรึกษาหลัก และหัวหน้าภาควิชา</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.</span> บทคัดย่อภาษาไทย และ ภาษาอังกฤษ (Thai & English Abstract)</div>
+          <div class="section-desc">สรุปปัญหา, วัตถุประสงค์, นวัตกรรม (Google Maps Parsing, Auto-Scroll Pulse), ผลการทดสอบ และประโยชน์ที่ได้ (ไม่เกิน 1 หน้า)</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">4.</span> กิตติกรรมประกาศ และ สารบัญ (Acknowledgements & Table of Contents)</div>
+          <div class="section-desc">ขอบคุณผู้สนับสนุน, สารบัญเนื้อหา (Table of Contents), สารบัญตาราง (List of Tables), และสารบัญภาพ (List of Figures)</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Chapter 1 -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">บทที่ 1</span>
+        <span>บทนำ (Introduction)</span>
+      </div>
+      <span class="tag">ความเป็นมาและกรอบเป้าหมาย</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.1</span> ความเป็นมาและความสำคัญของปัญหา (Background and Problem Statement)</div>
+          <div class="section-desc">
+            - สถานการณ์อุทกภัยในไทยและปัญหาคอขวดด้านการสื่อสารขอความช่วยเหลือ<br>
+            - ปัญหาป้ายบ้าน/ป้ายซอยจมน้ำ ทำให้ระบุพิกัดไม่ได้ เกิดการวนเรือค้นหา<br>
+            - ข้อมูลกระจัดกระจายบนโซเชียลมีเดีย เกิดเคสซ้ำซ้อน และสายด่วนโทรศัพท์สายไม่ว่าง
+          </div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.2</span> วัตถุประสงค์ของโครงงาน (Objectives)</div>
+          <div class="section-desc">
+            1. พัฒนาระบบรับแจ้งเหตุฉุกเฉินที่รองรับทั้ง GPS ดาวเทียม และการแปลงลิงก์ Google Maps เป็นพิกัดอัตโนมัติ<br>
+            2. พัฒนาระบบนำทางฟอร์มแบบกะพริบเน้นสายตา (Bounce-Pulse Auto-Scroll) แก้ปัญหาผู้ใช้ตื่นตระหนกกรอกข้อมูลไม่ครบ<br>
+            3. พัฒนาระบบแผนที่สถานการณ์เรียลไทม์ (Live Crisis Map) และกระดานคัดกรองงานกู้ภัย (Rescue Dispatch Feed)
+          </div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.3</span> ขอบเขตของโครงงาน (Project Scope)</div>
+          <div class="section-desc">
+            - <b>ขอบเขตกลุ่มผู้ใช้:</b> ประชาชนผู้ประสบภัย, เจ้าหน้าที่กู้ภัยที่ยืนยันตัวตน (Verified Rescuer), ผู้ดูแลระบบ (Admin)<br>
+            - <b>ขอบเขตการทำงาน:</b> ฟอร์ม SOS, แผนที่ระดับน้ำ, รายการงานกู้ภัย, ปุ่มโทรออกด่วน, ระบบแชร์ LINE
+          </div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.4</span> ประโยชน์ที่คาดว่าจะได้รับ (Expected Benefits)</div>
+          <div class="section-desc">ลดเวลาส่งต่อพิกัด, คัดกรองกลุ่มเปราะบาง (ผู้ป่วยติดเตียง/เด็กเล็ก) ได้รวดเร็ว, ป้องกันข้อมูลซ้ำซ้อน</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.5</span> แผนการดำเนินงานและตารางเวลา (Timeline / Gantt Chart)</div>
+          <div class="section-desc">ตารางแผนการดำเนินงาน 14 สัปดาห์ (ศึกษาข้อมูล &rarr; ออกแบบ &rarr; พัฒนา &rarr; ทดสอบ &rarr; ใช้งานจริง)</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- Chapter 2 -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">บทที่ 2</span>
+        <span>ทฤษฎี วรรณกรรม และเทคโนโลยีที่เกี่ยวข้อง (Literature & Technologies)</span>
+      </div>
+      <span class="tag">กรอบแนวคิดวิชาการ</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.1</span> สารสนเทศในภาวะวิกฤต (Crisis Informatics & Disaster Management)</div>
+          <div class="section-desc">ทฤษฎีการจัดการสารสนเทศฉุกเฉิน และหลักการคัดกรองระดับความเร่งด่วนตามหลักการแพทย์ฉุกเฉิน (Triage)</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.2</span> ระบบสารสนเทศภูมิศาสตร์ (GIS) และสูตรฮาเวอร์ซีน (Haversine Formula)</div>
+          <div class="section-desc">การคำนวณระยะทางทรงกลมระหว่างพิกัดกู้ภัยกับผู้ประสบภัยบนพื้นผิวโลก เพื่อจัดเรียงลำดับเคสใกล้-ไกล</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.3</span> การถอดรหัสพิกัดจาก URL ด้วย Regular Expressions (Regex Parsing)</div>
+          <div class="section-desc">การวิเคราะห์โครงสร้าง URL ของ Google Maps (?q=, @lat,lng, embedded coordinates) เพื่อแปลงเป็น ละติจูด/ลองจิจูด</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.4</span> เทคโนโลยีส่วนต่อประสาน (Modern Frontend Architecture)</div>
+          <div class="section-desc">
+            <span class="tag">React 19</span> <span class="tag">TypeScript</span> <span class="tag">Vite</span> <span class="tag">Tailwind CSS v4</span> <span class="tag">Leaflet & OpenStreetMap</span>
+          </div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.5</span> สถาปัตยกรรมการยืนยันตัวตนและการควบคุมสิทธิ์ (LINE OAuth & RBAC)</div>
+          <div class="section-desc">การล็อกอินด้วย LINE Social Login และการแบ่งบทบาทสิทธิ์ (Citizen vs Verified Rescuer vs Admin)</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.6</span> ความมั่นคงปลอดภัยเว็บและการป้องกันสแปม (OWASP Top 10 Mitigation)</div>
+          <div class="section-desc">การป้องกัน Stored XSS, Anti-Spam Rate Limiting (Cooldown 60s), Clickjacking และการป้องกัน IDOR</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Chapter 3 -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">บทที่ 3</span>
+        <span>การวิเคราะห์และออกแบบระบบ (System Analysis and Design)</span>
+      </div>
+      <span class="tag">พิมพ์เขียวระบบ</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.1</span> สถาปัตยกรรมระบบโดยรวม (System Architecture Diagram)</div>
+          <div class="section-desc">การเชื่อมต่อระหว่าง Client Presentation Layer, Application Logic Layer และ Data/External API Services</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.2</span> แผนภาพกรณีการใช้งานและผู้ใช้ (Use Case Diagram & Actor Matrix)</div>
+          <div class="section-desc">แผนภาพ Use Case จำแนกหน้าที่ระหว่าง Citizen (แจ้งเหตุ), Rescuer (รับเคส/นำทาง/โทร), Admin (รับรอง/จัดการระบบ)</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.3</span> แผนภาพกระบวนการทำงาน (Activity / Workflow Diagram)</div>
+          <div class="section-desc">Workflow การส่งข้อมูล SOS, กระบวนการตรวจสอบและเลื่อนจออัตโนมัติ (Bounce-Pulse), และวงจรสถานะเคส (Pending &rarr; Completed)</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.4</span> โครงสร้างข้อมูลและแบบจำลองข้อมูล (Data Model & Schema Definitions)</div>
+          <div class="section-desc">นิยามโครงสร้าง SOSRequest, Coordinates, PeopleCount, UserProfile, UrgencyLevel, WaterLevel ใน TypeScript</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.5</span> การออกแบบส่วนต่อประสานผู้ใช้ (UI/UX Emergency Design System)</div>
+          <div class="section-desc">การออกแบบ Touch Target ขนาดใหญ่สำหรับมือถือ, สีสัญลักษณ์กู้ภัยสากล (แดง-ส้ม-เขียว-น้ำเงิน), และการตัดปุ่มที่ซ้ำซ้อน</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Chapter 4 -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">บทที่ 4</span>
+        <span>ผลการดำเนินงานและการทดสอบระบบ (Implementation and Testing)</span>
+      </div>
+      <span class="tag">ผลงานและการทดสอบ</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">4.1</span> ผลการพัฒนาฟังก์ชันการทำงานหลัก (System Implementation Results)</div>
+          <div class="section-desc">หน้าฟอร์ม SOS พร้อม GPS และแปลงลิงก์ Google Maps, แผนที่ Live Crisis Map, และกระดานคัดกรอง Rescue Feed</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">4.2</span> ผลการทำงานของอัลกอริทึม Auto-Scroll & Visual Bounce-Pulse</div>
+          <div class="section-desc">การตัดหน้าต่างป๊อปอัปออกทั้งหมด แล้วเลื่อนหน้าจอตรงไปยังช่องบนสุดที่ยังไม่ได้กรอกทันที พร้อมเอฟเฟกต์กะพริบขยายขนาด</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">4.3</span> ผลการทดสอบการทำงานตาม Use Cases (Functional Test Matrix)</div>
+          <div class="section-desc">
+            ตารางทดสอบ 8 กรณีทดสอบหลัก (TC-01 ถึง TC-08): ดึงพิกัด GPS, ถอดรหัส URL แผนที่, ตรวจจับข้อมูลว่าง, ป้องกันสแปม, และควบคุมสิทธิ์กู้ภัย (ผ่าน 100%)
+          </div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">4.4</span> รายงานการทดสอบและแก้ไขช่องโหว่ความปลอดภัย (Security Audit)</div>
+          <div class="section-desc">ผลการทดสอบการป้องกัน Stored XSS, Rate Limiting, Role Verification Bypass, และ Clickjacking</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- Chapter 5 -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">บทที่ 5</span>
+        <span>สรุปผลการดำเนินงาน อภิปรายผล และข้อเสนอแนะ (Conclusions & Future Work)</span>
+      </div>
+      <span class="tag">บทสรุปและการต่อยอด</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">5.1</span> สรุปผลการดำเนินงาน (Conclusions)</div>
+          <div class="section-desc">สรุปความสำเร็จของโครงงานตามวัตถุประสงค์ การลดระยะเวลากรอกข้อมูล และความแม่นยำในการนำทางกู้ภัย</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">5.2</span> อภิปรายผลและจุดเด่นของระบบ (Discussion & Key Highlights)</div>
+          <div class="section-desc">Zero-Cost High Availability Architecture, Human-Centered Emergency Design, และการจำแนกกลุ่มเปราะบาง</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">5.3</span> ปัญหา อุปสรรค และแนวทางแก้ไข (Limitations & Mitigation)</div>
+          <div class="section-desc">ปัญหาเสาสัญญาณเน็ตล่มในพื้นที่น้ำท่วมสูง (แก้ไขด้วย Offline SMS Template) และปัญหาลิงก์ย่อ Google Maps</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">5.4</span> ข้อเสนอแนะและการพัฒนาต่อยอดในอนาคต (Future Enhancements)</div>
+          <div class="section-desc">
+            1. บูรณาการ AI WeatherNext 3 (Google DeepMind) พยากรณ์น้ำท่วมล่วงหน้า 3–7 วัน<br>
+            2. เชื่อมโยงระบบเข้ากับ API ศูนย์สั่งการสายด่วน 1669 และกรมป้องกันและบรรเทาสาธารณภัย (ปภ.)<br>
+            3. พัฒนาระบบส่งสัญญาณ SOS ผ่านคลื่นวิทยุไร้สายระยะไกล (LoRa Mesh Network)
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- References & Appendix -->
+  <div class="chapter-box">
+    <div class="chapter-header">
+      <div class="chapter-title">
+        <span class="chapter-badge">ภาคผนวก</span>
+        <span>บรรณานุกรมและภาคผนวก (References & Appendices)</span>
+      </div>
+      <span class="tag">เอกสารอ้างอิง</span>
+    </div>
+    <div class="chapter-content">
+      <ul class="section-list">
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">1.</span> บรรณานุกรม (References)</div>
+          <div class="section-desc">เอกสารอ้างอิงมาตรฐาน APA ด้าน Crisis Informatics, OWASP, แผน ปภ. ชาติ, และเอกสารเทคโนโลยี Leaflet / React</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">2.</span> ภาคผนวก ก: คู่มือการติดตั้งและทดสอบระบบ (Setup Guide)</div>
+          <div class="section-desc">Prerequisites (Node.js 18+, npm), คำสั่ง git clone, npm install, npm run dev, และ npm run build</div>
+        </li>
+        <li class="section-item">
+          <div class="section-head"><span class="bullet-point">3.</span> ภาคผนวก ข: โค้ดต้นฉบับฟังก์ชันสำคัญ (Source Code Snippets)</div>
+          <div class="section-desc">โค้ด parseGoogleMapsCoordinates(), jumpToField() with bounce pulse, และฟังก์ชันคำนวณระยะทาง Haversine</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    โครงร่างรายงานปริญญานิพนธ์ฉบับนี้ จัดทำขึ้นเพื่อเป็นแนวทางและมาตรฐานในการจัดทำเล่มรายงานฉบับสมบูรณ์สำหรับโครงการ "น้ำใจไทย" (Nam-jai-Thai)
+  </div>
+
+</body>
+</html>
