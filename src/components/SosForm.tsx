@@ -700,14 +700,17 @@ export const SosForm: React.FC<SosFormProps> = ({
             </div>
 
             <div>
-              <span className="label">LINE ID (ถ้ามี)</span>
+              <span className="label">LINE ID สำหรับให้กู้ภัยทักแชท (ถ้ามี)</span>
               <input
                 type="text"
-                placeholder="เช่น line_id_123"
+                placeholder="เช่น somchai_123 (ไอดีสำหรับค้นหาใน LINE)"
                 value={lineId}
                 onChange={(e) => setLineId(e.target.value)}
                 className="field"
               />
+              <p className="mt-1 text-[11px] text-slate-500">
+                💬 ระบุ LINE ID เพื่อให้เจ้าหน้าที่กู้ภัยสามารถกดปุ่มเด้งเปิดแชท LINE คุยกับคุณได้ทันที
+              </p>
             </div>
           </div>
 

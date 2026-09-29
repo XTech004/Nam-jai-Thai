@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   CloudRain,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  MessageCircle
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import {
@@ -151,15 +152,27 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
               <span>เปิด Google Maps</span>
             </a>
 
-            <a
-              href={getLineShareUrl(shareText)}
-              target="_blank"
-              rel="noreferrer"
-              className="py-2.5 px-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm text-center"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>แชร์เข้า LINE</span>
-            </a>
+            {request.lineId ? (
+              <a
+                href={`https://line.me/ti/p/~${encodeURIComponent(request.lineId.replace(/^@/, ''))}`}
+                target="_blank"
+                rel="noreferrer"
+                className="py-2.5 px-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm text-center"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>แชท LINE กับผู้แจ้ง</span>
+              </a>
+            ) : (
+              <a
+                href={getLineShareUrl(shareText)}
+                target="_blank"
+                rel="noreferrer"
+                className="py-2.5 px-3 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm text-center"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>แชร์เข้า LINE</span>
+              </a>
+            )}
 
             <button
               onClick={handleCopy}
@@ -302,19 +315,67 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
               <div className="text-slate-700 mt-2 pt-2 border-t border-slate-200/80">
                 <div className="flex items-center justify-between">
                   <span><b>เบอร์โทรศัพท์:</b> {isAdmin ? request.primaryPhone : maskPhone(request.primaryPhone)}</span>
+                  {isAdmin && (
+                    <a
+                      href={`tel:${request.primaryPhone}`}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>โทรออก</span>
+                    </a>
+                  )}
                 </div>
                 {request.secondaryPhone && (
-                  <div className="text-slate-600 text-[11px] mt-0.5">
-                    <b>เบอร์สำรอง:</b> {isAdmin ? request.secondaryPhone : maskPhone(request.secondaryPhone)}
+                  <div className="text-slate-600 text-[11px] mt-1 flex items-center justify-between">
+                    <span><b>เบอร์สำรอง:</b> {isAdmin ? request.secondaryPhone : maskPhone(request.secondaryPhone)}</span>
+                    {isAdmin && (
+                      <a
+                        href={`tel:${request.secondaryPhone}`}
+                        className="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-800 text-white font-semibold text-[10px]"
+                      >
+                        โทรเบอร์สำรอง
+                      </a>
+                    )}
                   </div>
                 )}
-                {request.lineId && (
-                  <div className="text-slate-600 text-[11px] mt-0.5">
-                    <b>LINE ID:</b> {request.lineId}
+
+                {request.lineId ? (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="text-[11px] text-emerald-800 font-bold flex items-center gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5 text-[#06C755]" />
+                        <span>LINE ID ผู้ประสบภัย:</span>
+                      </div>
+                      <div className="font-mono font-bold text-emerald-950 text-xs mt-0.5">
+                        @{request.lineId.replace(/^@/, '')}
+                      </div>
+                    </div>
+                    <a
+                      href={`https://line.me/ti/p/~${encodeURIComponent(request.lineId.replace(/^@/, ''))}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>เด้งเปิดแชท LINE ทันที</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="mt-2 p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-[11px] flex items-center justify-between">
+                    <span>ผู้แจ้งไม่ได้ระบุ LINE ID</span>
+                    <a
+                      href={`https://line.me/R/msg/text/?${encodeURIComponent(`สวัสดีครับ จากทีมกู้ภัยน้ำใจไทย ขอติดต่อคุณ ${request.fullName} กรณีแจ้งขอความช่วยเหลือเคส #${request.id} ที่ ${request.address}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-md bg-[#06C755] text-white font-bold text-[10px] hover:bg-[#05b34c]"
+                    >
+                      ส่งข้อความ LINE
+                    </a>
                   </div>
                 )}
+
                 {!isAdmin && (
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-slate-400 mt-1.5">
                     🔒 ปกปิดเบอร์ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)
                   </p>
                 )}

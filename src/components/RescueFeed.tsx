@@ -17,11 +17,13 @@ import {
   ChevronDown,
   Users,
   BedDouble,
-  Share2
+  Share2,
+  MessageCircle
 } from 'lucide-react';
 import type { SOSRequest, RequestStatus } from '../types/sos';
 import { formatThaiDateTime, getUrgencyInfo, getWaterLevelInfo, getStatusInfo, getGoogleMapsUrl } from '../utils/formatters';
 import { buildSosShareText, copyToClipboard } from '../utils/shareHelpers';
+import { maskPhone } from '../utils/privacy';
 
 interface RescueFeedProps {
   requests: SOSRequest[];
@@ -493,15 +495,39 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                       {/* Actions */}
                       <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <a
-                            href={`tel:${req.primaryPhone}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
-                          >
-                            <Phone className="size-3.5" />
-                            <span className="hidden sm:inline">โทร</span>
-                            {req.primaryPhone}
-                          </a>
+                          {isAdmin ? (
+                            <a
+                              href={`tel:${req.primaryPhone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
+                            >
+                              <Phone className="size-3.5" />
+                              <span className="hidden sm:inline">โทร</span>
+                              {req.primaryPhone}
+                            </a>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1.5 text-[11px] font-medium text-slate-600"
+                              title="ปกปิดเบอร์โทรตาม PDPA (เจ้าหน้าที่เข้าสู่ระบบด้วย PIN เพื่อดูเบอร์เต็ม)"
+                            >
+                              <Phone className="size-3 text-slate-400" />
+                              {maskPhone(req.primaryPhone)}
+                            </span>
+                          )}
+
+                          {req.lineId && (
+                            <a
+                              href={`https://line.me/ti/p/~${encodeURIComponent(req.lineId.replace(/^@/, ''))}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[#06C755] hover:bg-[#05b34c] px-3 py-1.5 text-[11px] font-bold text-white transition-colors shadow-2xs"
+                              title={`เปิดแชท LINE กับผู้แจ้ง: @${req.lineId.replace(/^@/, '')}`}
+                            >
+                              <MessageCircle className="size-3.5" />
+                              <span>แชท LINE</span>
+                            </a>
+                          )}
 
                           <a
                             href={getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng)}

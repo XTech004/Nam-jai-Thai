@@ -2,6 +2,7 @@ import type { SOSRequest, RequestStatus } from '../types/sos';
 import { INITIAL_MOCK_REQUESTS } from '../data/mockData';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseClient } from './supabaseClient';
+import { sendSosLineAlert } from './lineNotificationService';
 
 const LOCAL_STORAGE_KEY = 'thai_flood_sos_requests_v1';
 const SOS_SYNC_EVENT = 'thai_flood_sos_sync_event';
@@ -155,6 +156,11 @@ export async function createSOSRequest(newRequest: SOSRequest): Promise<SOSReque
       console.error('Exception inserting into Supabase:', err);
     }
   }
+
+  // Dispatch LINE Alert asynchronously to avoid blocking emergency report submission
+  sendSosLineAlert(newRequest).catch((err) => {
+    console.warn('Failed to send LINE SOS Alert notification:', err);
+  });
 
   return updatedLocal;
 }
