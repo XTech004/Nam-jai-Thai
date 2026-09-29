@@ -1,0 +1,9 @@
+services:
+  flood-relief-sos:
+    build: .
+    container_name: flood-relief-sos-app
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
