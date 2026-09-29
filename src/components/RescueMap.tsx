@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import type { SOSRequest } from '../types/sos';
 import { getUrgencyInfo, getWaterLevelInfo, getGoogleMapsUrl, formatThaiDateTime } from '../utils/formatters';
 import { MapPin, Navigation, Phone, Filter, Maximize2 } from 'lucide-react';
@@ -44,7 +45,19 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase }) 
     markersLayerRef.current = markersGroup;
     mapInstanceRef.current = map;
 
+    // Fix container sizing when mounted in tabs
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -236,7 +249,8 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase }) 
       <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-lg relative overflow-hidden">
         <div 
           ref={mapContainerRef} 
-          className="w-full h-[520px] sm:h-[600px] rounded-xl z-10" 
+          style={{ width: '100%', height: '580px', minHeight: '480px' }}
+          className="w-full rounded-xl z-10" 
         />
 
         {/* Legend Overlay at bottom left */}
