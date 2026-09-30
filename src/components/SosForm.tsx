@@ -28,6 +28,7 @@ import { COMMON_NEEDS_LIST } from '../data/mockData';
 import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
 import { formatPhone } from '../services/userService';
 import { parseGoogleMapsCoordinates } from '../utils/formatters';
+import { LocationPreviewMap } from './LocationPreviewMap';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
@@ -164,16 +165,20 @@ export const SosForm: React.FC<SosFormProps> = ({
   // Google Maps URL & Precision Coordinates
   const [googleMapsInput, setGoogleMapsInput] = useState<string>('');
   const [isParsedFromUrl, setIsParsedFromUrl] = useState<boolean>(false);
+  const [isResolvingUrl, setIsResolvingUrl] = useState<boolean>(false);
+  const [resolveError, setResolveError] = useState<string>('');
 
-  const handleGoogleMapsInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGoogleMapsInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setGoogleMapsInput(val);
+    setResolveError('');
 
     if (!val.trim()) {
       setIsParsedFromUrl(false);
       return;
     }
 
+    // 1. Direct coordinate parsing
     const parsed = parseGoogleMapsCoordinates(val);
     if (parsed) {
       setCoords({
@@ -183,6 +188,35 @@ export const SosForm: React.FC<SosFormProps> = ({
       });
       setIsParsedFromUrl(true);
       setGpsError('');
+      setResolveError('');
+      return;
+    }
+
+    // 2. Short links resolution via /api/resolve-maps
+    if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(val)) {
+      setIsResolvingUrl(true);
+      try {
+        const res = await fetch(`/api/resolve-maps?url=${encodeURIComponent(val.trim())}`);
+        const data = await res.json();
+        if (data.success && data.lat && data.lng) {
+          setCoords({
+            lat: data.lat,
+            lng: data.lng,
+            accuracy: 5
+          });
+          setIsParsedFromUrl(true);
+          setGpsError('');
+          setResolveError('');
+        } else {
+          setIsParsedFromUrl(false);
+          setResolveError('ไม่สามารถตรวจหาพิกัดจากลิงก์ย่อนี้ได้อัตโนมัติ กรุณาระบุพิกัดตัวเลข หรือใช้ปุ่มดึงพิกัด GPS');
+        }
+      } catch {
+        setIsParsedFromUrl(false);
+        setResolveError('การเชื่อมต่อถอดรหัสพิกัดขัดข้อง กรุณากดปุ่มดึงพิกัด GPS หรือระบุตัวเลขพิกัด');
+      } finally {
+        setIsResolvingUrl(false);
+      }
     } else {
       setIsParsedFromUrl(false);
     }
@@ -191,6 +225,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   const handleClearGoogleMapsInput = () => {
     setGoogleMapsInput('');
     setIsParsedFromUrl(false);
+    setResolveError('');
   };
 
   // Scroll and pulse highlight directly to an unfilled field (เด้งไปที่ช่องยังไม่ได้กรอก)
@@ -634,6 +669,20 @@ export const SosForm: React.FC<SosFormProps> = ({
               )}
             </div>
 
+            {isResolvingUrl && (
+              <p className="text-[11px] font-semibold text-blue-600 flex items-center gap-1.5 animate-pulse">
+                <Loader2 className="size-3.5 animate-spin text-blue-600" />
+                <span>กำลังเชื่อมต่อและถอดรหัสพิกัดจากลิงก์ Google Maps...</span>
+              </p>
+            )}
+
+            {resolveError && (
+              <p className="text-[11px] text-rose-600 flex items-start gap-1">
+                <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+                <span>{resolveError}</span>
+              </p>
+            )}
+
             {coords && isParsedFromUrl && (
               <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
                 <CheckCircle2 className="size-3" />
@@ -644,6 +693,19 @@ export const SosForm: React.FC<SosFormProps> = ({
             <p className="text-[11px] text-slate-500 leading-relaxed">
               💡 <b>วิธีแชร์:</b> เปิดแอป Google Maps &gt; กดค้างที่บ้านของคุณ &gt; กด <b>แชร์ (Share)</b> แล้วคัดลอกลิงก์มาวางที่นี่ ระบบจะปักหมุดบนแผนที่กู้ภัยให้ตรงตำแหน่งเป๊ะ
             </p>
+
+            {/* Interactive Location Preview Map with Live Pin Linking */}
+            {coords && (
+              <LocationPreviewMap
+                lat={coords.lat}
+                lng={coords.lng}
+                onLocationChange={(newLat, newLng) => {
+                  setCoords({ lat: newLat, lng: newLng, accuracy: 5 });
+                }}
+                isFromGoogleMaps={isParsedFromUrl}
+                googleMapsUrl={googleMapsInput}
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">

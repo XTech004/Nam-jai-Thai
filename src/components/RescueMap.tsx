@@ -220,6 +220,9 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
         req.people.adults + req.people.elderly + req.people.bedridden + req.people.children;
       const shownPhone = isAdmin ? req.primaryPhone : maskPhone(req.primaryPhone);
 
+      const hasGoogleMaps = Boolean(req.googleMapsUrl);
+      const navUrl = req.googleMapsUrl || getGoogleMapsUrl(lat, lng);
+
       const marker = L.marker([lat, lng], {
         icon: L.divIcon({
           className: 'custom-flood-pin',
@@ -232,13 +235,18 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
               }
               <div style="
                 position:relative;width:24px;height:24px;border-radius:9999px;
-                background:${pinColor};border:2.5px solid #ffffff;
+                background:${pinColor};border:2.5px solid ${hasGoogleMaps ? '#38bdf8' : '#ffffff'};
                 box-shadow:0 6px 14px -4px rgba(15,23,42,0.55);
                 display:flex;align-items:center;justify-content:center;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 21s7-4.35 7-10a7 7 0 1 0-14 0c0 5.65 7 10 7 10z"></path>
                 </svg>
               </div>
+              ${
+                hasGoogleMaps
+                  ? '<span style="position:absolute;bottom:1px;right:1px;width:9px;height:9px;background:#0284c7;border:1.5px solid #ffffff;border-radius:9999px;" title="เชื่อมโยงพิกัดจาก Google Maps"></span>'
+                  : ''
+              }
             </div>
           `,
           iconSize: [36, 36],
@@ -254,6 +262,14 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
             <span style="font-weight:700;color:${pinColor};">${THAI_URGENCY[req.urgency]}</span>
             <span style="margin-left:auto;background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:6px;font-size:10px;font-weight:600;">${escape(req.id)}</span>
           </div>
+
+          ${
+            hasGoogleMaps
+              ? `<div style="display:flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:8px;padding:3px 7px;margin-bottom:6px;font-size:10px;font-weight:700;">
+                   <span>📍 พิกัดตรงจาก Google Maps (แม่นยำสูง)</span>
+                 </div>`
+              : ''
+          }
 
           <div style="font-weight:800;font-size:15px;color:#0f172a;margin-bottom:4px;">${escape(req.fullName)}</div>
 
@@ -272,7 +288,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
 
           <div style="display:flex;gap:6px;margin-top:10px;">
             <a href="tel:${escape(req.primaryPhone)}" style="flex:1;text-align:center;background:#059669;color:#fff;padding:7px;border-radius:999px;text-decoration:none;font-weight:700;font-size:11px;">โทร ${escape(shownPhone)}</a>
-            <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" rel="noreferrer" style="flex:1;text-align:center;background:#0f172a;color:#fff;padding:7px;border-radius:999px;text-decoration:none;font-weight:700;font-size:11px;">นำทาง</a>
+            <a href="${escape(navUrl)}" target="_blank" rel="noreferrer" style="flex:1;text-align:center;background:#0f172a;color:#fff;padding:7px;border-radius:999px;text-decoration:none;font-weight:700;font-size:11px;">นำทาง</a>
           </div>
         </div>
       `);
