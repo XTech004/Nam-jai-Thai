@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
  * Vercel Serverless Function: /api/resolve-maps
  * Resolves Google Maps URLs (including short links like maps.app.goo.gl)
  * and extracts precise latitude and longitude coordinates.
+ * Prioritizes the true location pin (!3d!4d) over the camera viewport (@lat,lng).
  */
 export default async function handler(req: any, res: any) {
   // Allow CORS from any origin
@@ -23,38 +24,87 @@ export default async function handler(req: any, res: any) {
 
     const trimmedUrl = rawUrl.trim();
 
-    // Helper regex coordinate parser
-    const extractCoords = (text: string) => {
+    // Helper to extract place name from Google Maps URL if available
+    const extractPlaceName = (text: string): string | null => {
+      if (!text) return null;
+      const placeMatch = text.match(/\/place\/([^/@?]+)/);
+      if (placeMatch) {
+        try {
+          const raw = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+          // If the place name is just coordinates (e.g. 13.7498,100.4915), ignore it
+          if (!/^-?\d{1,2}\.\d+[,\+\s]+-?\d{1,3}\.\d+$/.test(raw)) {
+            return raw;
+          }
+        } catch {
+          // ignore uri decode error
+        }
+      }
+      return null;
+    };
+
+    // Helper regex coordinate parser with strict priority for TRUE PIN LOCATION
+    const extractCoords = (text: string): { lat: number; lng: number } | null => {
       if (!text) return null;
 
-      // 1. Direct coordinates: "19.9071, 99.8325"
-      const direct = text.match(/^(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)$/);
-      if (direct) {
-        return { lat: parseFloat(direct[1]), lng: parseFloat(direct[2]) };
-      }
-
-      // 2. Query param ?q=lat,lng or query=lat,lng or ll=lat,lng
-      const query = text.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/i);
-      if (query) {
-        return { lat: parseFloat(query[1]), lng: parseFloat(query[2]) };
-      }
-
-      // 3. Path @lat,lng,zoom pattern: .../@19.9071,99.8325,17z...
-      const at = text.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
-      if (at) {
-        return { lat: parseFloat(at[1]), lng: parseFloat(at[2]) };
-      }
-
-      // 4. Data pattern !3dlat!4dlng
+      // 1. Exact place pin in Google Maps data params: !3d13.7498558!4d100.4915765
+      // MUST be highest priority because @lat,lng in place URLs is only the camera viewport/zoom
       const data = text.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
       if (data) {
-        return { lat: parseFloat(data[1]), lng: parseFloat(data[2]) };
+        const lat = parseFloat(data[1]);
+        const lng = parseFloat(data[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
       }
 
-      // 5. destination=lat,lng or center=lat,lng
+      // 2. Explicit dropped pin in /place/lat,lng or /place/lat+lng
+      const placeCoord = text.match(/\/place\/(-?\d{1,2}\.\d+)[,\+\s]+(-?\d{1,3}\.\d+)/);
+      if (placeCoord) {
+        const lat = parseFloat(placeCoord[1]);
+        const lng = parseFloat(placeCoord[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
+      }
+
+      // 3. Query param ?q=lat,lng or ?query=lat,lng or ?ll=lat,lng
+      const query = text.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/i);
+      if (query) {
+        const lat = parseFloat(query[1]);
+        const lng = parseFloat(query[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
+      }
+
+      // 4. destination=lat,lng or center=lat,lng query param
       const dest = text.match(/[?&](?:destination|center)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/i);
       if (dest) {
-        return { lat: parseFloat(dest[1]), lng: parseFloat(dest[2]) };
+        const lat = parseFloat(dest[1]);
+        const lng = parseFloat(dest[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
+      }
+
+      // 5. Direct coordinates string: "19.9071, 99.8325"
+      const direct = text.match(/^(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)$/);
+      if (direct) {
+        const lat = parseFloat(direct[1]);
+        const lng = parseFloat(direct[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
+      }
+
+      // 6. Camera viewport center @lat,lng (Fallback ONLY if no pin coordinates found above)
+      const at = text.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
+      if (at) {
+        const lat = parseFloat(at[1]);
+        const lng = parseFloat(at[2]);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
       }
 
       return null;
@@ -62,11 +112,13 @@ export default async function handler(req: any, res: any) {
 
     // First try direct parse without network request
     const directCoords = extractCoords(trimmedUrl);
-    if (directCoords && directCoords.lat >= -90 && directCoords.lat <= 90 && directCoords.lng >= -180 && directCoords.lng <= 180) {
+    const directPlace = extractPlaceName(trimmedUrl);
+    if (directCoords) {
       return res.status(200).json({
         success: true,
         lat: directCoords.lat,
         lng: directCoords.lng,
+        placeName: directPlace,
         resolvedUrl: trimmedUrl,
         source: 'direct'
       });
@@ -84,26 +136,39 @@ export default async function handler(req: any, res: any) {
 
     const finalUrl = response.url || trimmedUrl;
     let coords = extractCoords(finalUrl);
+    let placeName = extractPlaceName(finalUrl);
 
     // If still not in the URL, inspect the HTML response for coordinates
     if (!coords) {
       const html = await response.text();
-      // Look for meta static map center: center=19.9071%2C99.8325 or /@19.9071,99.8325/
-      const htmlMatch =
-        html.match(/center=(-?\d{1,2}\.\d+)%2C(-?\d{1,3}\.\d+)/i) ||
-        html.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) ||
-        html.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+      // Look for !3d!4d pin in HTML first, then meta center
+      const htmlPin = html.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
+      if (htmlPin) {
+        coords = { lat: parseFloat(htmlPin[1]), lng: parseFloat(htmlPin[2]) };
+      } else {
+        const htmlCenter =
+          html.match(/center=(-?\d{1,2}\.\d+)%2C(-?\d{1,3}\.\d+)/i) ||
+          html.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
+        if (htmlCenter) {
+          coords = { lat: parseFloat(htmlCenter[1]), lng: parseFloat(htmlCenter[2]) };
+        }
+      }
 
-      if (htmlMatch) {
-        coords = { lat: parseFloat(htmlMatch[1]), lng: parseFloat(htmlMatch[2]) };
+      if (!placeName) {
+        // Try extracting place name from title or og:title in HTML
+        const ogTitle = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i);
+        if (ogTitle && ogTitle[1] && !ogTitle[1].includes('Google Maps')) {
+          placeName = ogTitle[1].trim();
+        }
       }
     }
 
-    if (coords && coords.lat >= -90 && coords.lat <= 90 && coords.lng >= -180 && coords.lng <= 180) {
+    if (coords) {
       return res.status(200).json({
         success: true,
         lat: coords.lat,
         lng: coords.lng,
+        placeName: placeName || null,
         resolvedUrl: finalUrl,
         source: 'resolved'
       });

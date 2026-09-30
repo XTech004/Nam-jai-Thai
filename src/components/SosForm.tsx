@@ -165,6 +165,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   // Google Maps URL & Precision Coordinates
   const [googleMapsInput, setGoogleMapsInput] = useState<string>('');
   const [isParsedFromUrl, setIsParsedFromUrl] = useState<boolean>(false);
+  const [detectedPlaceName, setDetectedPlaceName] = useState<string>('');
   const [isResolvingUrl, setIsResolvingUrl] = useState<boolean>(false);
   const [resolveError, setResolveError] = useState<string>('');
 
@@ -175,6 +176,7 @@ export const SosForm: React.FC<SosFormProps> = ({
 
     if (!val.trim()) {
       setIsParsedFromUrl(false);
+      setDetectedPlaceName('');
       return;
     }
 
@@ -187,6 +189,10 @@ export const SosForm: React.FC<SosFormProps> = ({
         accuracy: 5
       });
       setIsParsedFromUrl(true);
+      setDetectedPlaceName(parsed.placeName || '');
+      if (parsed.placeName && !landmark) {
+        setLandmark(parsed.placeName);
+      }
       setGpsError('');
       setResolveError('');
       return;
@@ -205,26 +211,34 @@ export const SosForm: React.FC<SosFormProps> = ({
             accuracy: 5
           });
           setIsParsedFromUrl(true);
+          setDetectedPlaceName(data.placeName || '');
+          if (data.placeName && !landmark) {
+            setLandmark(data.placeName);
+          }
           setGpsError('');
           setResolveError('');
         } else {
           setIsParsedFromUrl(false);
+          setDetectedPlaceName('');
           setResolveError('ไม่สามารถตรวจหาพิกัดจากลิงก์ย่อนี้ได้อัตโนมัติ กรุณาระบุพิกัดตัวเลข หรือใช้ปุ่มดึงพิกัด GPS');
         }
       } catch {
         setIsParsedFromUrl(false);
+        setDetectedPlaceName('');
         setResolveError('การเชื่อมต่อถอดรหัสพิกัดขัดข้อง กรุณากดปุ่มดึงพิกัด GPS หรือระบุตัวเลขพิกัด');
       } finally {
         setIsResolvingUrl(false);
       }
     } else {
       setIsParsedFromUrl(false);
+      setDetectedPlaceName('');
     }
   };
 
   const handleClearGoogleMapsInput = () => {
     setGoogleMapsInput('');
     setIsParsedFromUrl(false);
+    setDetectedPlaceName('');
     setResolveError('');
   };
 
@@ -684,10 +698,19 @@ export const SosForm: React.FC<SosFormProps> = ({
             )}
 
             {coords && isParsedFromUrl && (
-              <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
-                <CheckCircle2 className="size-3" />
-                <span>ปักหมุดแล้ว: ละติจูด {coords.lat.toFixed(5)}, ลองจิจูด {coords.lng.toFixed(5)}</span>
-              </p>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-2.5 text-[11px] text-emerald-800 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                  <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+                  <span>
+                    {detectedPlaceName
+                      ? `ตรวจพบตำแหน่ง: ${detectedPlaceName}`
+                      : 'ปักหมุดตำแหน่งพิกัดแม่นยำ 100%'}
+                  </span>
+                </div>
+                <div className="font-mono text-[11px] text-emerald-700">
+                  พิกัดหมุด: ละติจูด {coords.lat.toFixed(6)}, ลองจิจูด {coords.lng.toFixed(6)}
+                </div>
+              </div>
             )}
 
             <p className="text-[11px] text-slate-500 leading-relaxed">

@@ -129,17 +129,32 @@ export function getStatusInfo(status: RequestStatus) {
 }
 
 /**
- * Parses Google Maps URL or raw coordinate strings into { lat, lng }
- * Supports:
- * - "19.9071, 99.8325"
- * - https://www.google.com/maps?q=19.9071,99.8325
- * - https://www.google.com/maps/place/.../@19.9071,99.8325,17z/...
- * - https://maps.google.com/?query=19.9071,99.8325
- * - https://www.google.com/maps/...!3d19.9071!4d99.8325...
+ * Parses Google Maps URL or raw coordinate strings into { lat, lng, placeName? }
+ * Priority order ensures the EXACT PIN LOCATION is extracted:
+ * 1. Direct coordinates ("13.7498, 100.4915")
+ * 2. High-precision place pin in Google Maps data parameters (!3dlat!4dlng) - CRITICAL: checked before @lat,lng!
+ * 3. Dropped pin in path (/place/lat,lng or /place/lat+lng)
+ * 4. Search or pin query parameter (?q=lat,lng, ?query=lat,lng, ?ll=lat,lng)
+ * 5. Destination/center parameter (?destination=lat,lng, ?center=lat,lng)
+ * 6. Fallback camera viewport center (@lat,lng) - lowest priority, only when no pin exists
  */
-export function parseGoogleMapsCoordinates(input: string): { lat: number; lng: number } | null {
+export function parseGoogleMapsCoordinates(input: string): { lat: number; lng: number; placeName?: string } | null {
   if (!input || typeof input !== 'string') return null;
   const str = input.trim();
+
+  // Helper to extract place name from URL path
+  let placeName: string | undefined;
+  const placeMatch = str.match(/\/place\/([^/@?]+)/);
+  if (placeMatch) {
+    try {
+      const raw = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+      if (!/^-?\d{1,2}\.\d+[,\+\s]+-?\d{1,3}\.\d+$/.test(raw)) {
+        placeName = raw;
+      }
+    } catch {
+      // ignore uri decode error
+    }
+  }
 
   // 1. Direct coordinates: "19.9071, 99.8325" or "19.9071,99.8325"
   const directCoordMatch = str.match(/^(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)$/);
@@ -147,37 +162,58 @@ export function parseGoogleMapsCoordinates(input: string): { lat: number; lng: n
     const lat = parseFloat(directCoordMatch[1]);
     const lng = parseFloat(directCoordMatch[2]);
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return { lat, lng };
+      return { lat, lng, placeName };
     }
   }
 
-  // 2. Query param q=lat,lng or query=lat,lng or ll=lat,lng
-  const queryMatch = str.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/);
-  if (queryMatch) {
-    const lat = parseFloat(queryMatch[1]);
-    const lng = parseFloat(queryMatch[2]);
-    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return { lat, lng };
-    }
-  }
-
-  // 3. Path @lat,lng,zoom pattern: .../@19.9071,99.8325,17z...
-  const atMatch = str.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
-  if (atMatch) {
-    const lat = parseFloat(atMatch[1]);
-    const lng = parseFloat(atMatch[2]);
-    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return { lat, lng };
-    }
-  }
-
-  // 4. Pattern !3dlat!4dlng in Google Maps URLs
+  // 2. High-precision place pin in Google Maps data parameters: !3d13.7498558!4d100.4915765
+  // (CRITICAL: Must be checked before @lat,lng because @lat,lng is merely the camera zoom/center!)
   const dataMatch = str.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/);
   if (dataMatch) {
     const lat = parseFloat(dataMatch[1]);
     const lng = parseFloat(dataMatch[2]);
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-      return { lat, lng };
+      return { lat, lng, placeName };
+    }
+  }
+
+  // 3. Explicit dropped pin in /place/lat,lng or /place/lat+lng
+  const placeCoordMatch = str.match(/\/place\/(-?\d{1,2}\.\d+)[,\+\s]+(-?\d{1,3}\.\d+)/);
+  if (placeCoordMatch) {
+    const lat = parseFloat(placeCoordMatch[1]);
+    const lng = parseFloat(placeCoordMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng, placeName };
+    }
+  }
+
+  // 4. Query param q=lat,lng or query=lat,lng or ll=lat,lng
+  const queryMatch = str.match(/[?&](?:q|query|ll)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/i);
+  if (queryMatch) {
+    const lat = parseFloat(queryMatch[1]);
+    const lng = parseFloat(queryMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng, placeName };
+    }
+  }
+
+  // 5. Destination/center parameter: ?destination=lat,lng or ?center=lat,lng
+  const destMatch = str.match(/[?&](?:destination|center)=(-?\d{1,2}\.\d+)[,\s]+(-?\d{1,3}\.\d+)/i);
+  if (destMatch) {
+    const lat = parseFloat(destMatch[1]);
+    const lng = parseFloat(destMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng, placeName };
+    }
+  }
+
+  // 6. Camera viewport center @lat,lng (Fallback ONLY if no pin coordinates found above)
+  const atMatch = str.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/);
+  if (atMatch) {
+    const lat = parseFloat(atMatch[1]);
+    const lng = parseFloat(atMatch[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng, placeName };
     }
   }
 
