@@ -9,6 +9,20 @@ const SOS_SYNC_EVENT = 'thai_flood_sos_sync_event';
 
 // Convert DB snake_case row to TS camelCase SOSRequest
 export function toSOSRequest(row: any): SOSRequest {
+  let googleMapsUrl: string | undefined = row.google_maps_url || undefined;
+  let notes: string | undefined = row.notes || undefined;
+
+  // Seamlessly unpack Google Maps URL if encoded in notes
+  if (notes && notes.includes('[MAPS_URL:')) {
+    const match = notes.match(/\[MAPS_URL:(.*?)\]/);
+    if (match) {
+      if (!googleMapsUrl) {
+        googleMapsUrl = match[1].trim();
+      }
+      notes = notes.replace(/\[MAPS_URL:.*?\]/, '').trim() || undefined;
+    }
+  }
+
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -29,13 +43,13 @@ export function toSOSRequest(row: any): SOSRequest {
       lng: Number(row.longitude),
       accuracy: 10,
     },
-    googleMapsUrl: row.google_maps_url || undefined,
+    googleMapsUrl,
     waterLevel: row.water_level,
     people: typeof row.people === 'object' && row.people !== null
       ? row.people
       : { adults: 1, elderly: 0, bedridden: 0, children: 0, pets: 0 },
     needs: Array.isArray(row.needs) ? row.needs : [],
-    notes: row.notes || undefined,
+    notes,
     imageUrl: row.image_url || undefined,
     responderNotes: row.responder_notes || '',
     rescuedBy: row.rescued_by || '',
@@ -44,6 +58,11 @@ export function toSOSRequest(row: any): SOSRequest {
 
 // Convert TS camelCase SOSRequest to DB snake_case row
 export function toDBRow(req: SOSRequest): any {
+  let notes = req.notes || '';
+  if (req.googleMapsUrl && !notes.includes('[MAPS_URL:')) {
+    notes = notes ? `${notes}\n[MAPS_URL:${req.googleMapsUrl}]` : `[MAPS_URL:${req.googleMapsUrl}]`;
+  }
+
   return {
     id: req.id,
     created_at: req.createdAt,
@@ -61,11 +80,10 @@ export function toDBRow(req: SOSRequest): any {
     landmark: req.landmark,
     latitude: req.coordinates.lat,
     longitude: req.coordinates.lng,
-    google_maps_url: req.googleMapsUrl || null,
     water_level: req.waterLevel,
     people: req.people,
     needs: req.needs,
-    notes: req.notes || null,
+    notes: notes || null,
     image_url: req.imageUrl || null,
     responder_notes: req.responderNotes || null,
     rescued_by: req.rescuedBy || null,
@@ -124,12 +142,31 @@ export async function fetchSOSRequests(): Promise<SOSRequest[]> {
       }
 
       if (data) {
-        const mapped = data.map(toSOSRequest);
-        // Cache locally for offline capability
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mapped));
-        return mapped;
+        const remoteMapped = data.map(toSOSRequest);
+        const remoteIds = new Set(remoteMapped.map(r => r.id));
+
+        // Auto-recover any local requests that were created offline/before sync
+        const localCurrent = getLocalStoredRequests();
+        const unsyncedLocals = localCurrent.filter(l => !remoteIds.has(l.id) && l.id && l.id.startsWith('SOS-'));
+
+        if (unsyncedLocals.length > 0) {
+          // Sync unsynced requests up to Supabase in the background
+          for (const unsynced of unsyncedLocals) {
+            try {
+              const row = toDBRow(unsynced);
+              await supabase.from('sos_requests').insert(row);
+              console.log('Auto-recovered unsynced case to cloud database:', unsynced.id);
+            } catch (syncErr) {
+              console.warn('Background sync failed for case:', unsynced.id, syncErr);
+            }
+          }
+        }
+
+        const merged = [...unsyncedLocals, ...remoteMapped];
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+        return merged;
       }
-      return [];
+      return getLocalStoredRequests();
     } catch (err) {
       console.warn('Network error reaching Supabase, using local cache:', err);
       return getLocalStoredRequests();
@@ -142,7 +179,7 @@ export async function fetchSOSRequests(): Promise<SOSRequest[]> {
 export async function createSOSRequest(newRequest: SOSRequest): Promise<SOSRequest[]> {
   const supabase = getSupabaseClient();
 
-  // Optimistically update local cache
+  // Optimistically update local cache immediately
   const localCurrent = getLocalStoredRequests();
   const updatedLocal = [newRequest, ...localCurrent.filter(r => r.id !== newRequest.id)];
   saveToLocalStorage(updatedLocal);
@@ -153,6 +190,8 @@ export async function createSOSRequest(newRequest: SOSRequest): Promise<SOSReque
       const { error } = await supabase.from('sos_requests').insert(dbRow);
       if (error) {
         console.error('Error inserting into Supabase:', error.message);
+      } else {
+        console.log('Successfully saved to Supabase cloud database:', newRequest.id);
       }
     } catch (err) {
       console.error('Exception inserting into Supabase:', err);
