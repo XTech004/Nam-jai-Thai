@@ -341,14 +341,14 @@ export function App() {
                 key={key}
                 onClick={() => setActiveTab(key)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-2xl px-1 py-1.5 transition-colors duration-200 ${
-                  isActive ? 'text-rose-600' : 'text-slate-400 active:text-slate-700'
+                className={`relative flex flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 transition-colors duration-150 ${
+                  isActive ? 'text-red-600' : 'text-slate-400 active:text-slate-700'
                 }`}
               >
                 <span className="relative">
-                  <Icon className="size-5" strokeWidth={isActive ? 2.4 : 2} />
+                  <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
                   {key === 'feed' && requests.length > 0 && (
-                    <span className="absolute -right-1.5 -top-1 min-w-4 rounded-full bg-rose-600 px-1 text-[9px] font-bold leading-4 text-white tabular-nums">
+                    <span className="absolute -right-2 -top-1 min-w-4 rounded-full bg-red-600 px-1 text-[9px] font-bold leading-4 text-white tabular-nums">
                       {requests.length}
                     </span>
                   )}
@@ -357,8 +357,8 @@ export function App() {
                   {label}
                 </span>
                 <span
-                  className={`h-0.5 w-5 rounded-full transition-colors duration-200 ${
-                    isActive ? 'bg-rose-600' : 'bg-transparent'
+                  className={`h-0.5 w-4 rounded-full transition-colors duration-150 ${
+                    isActive ? 'bg-red-600' : 'bg-transparent'
                   }`}
                 />
               </button>
@@ -371,18 +371,18 @@ export function App() {
       <footer className="mt-auto border-t border-slate-200/80 bg-white/60">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-2 px-4 py-6 text-center text-xs text-slate-500 sm:flex-row sm:justify-between sm:text-left">
           <div className="flex items-center gap-2">
-            <LifeBuoy className="size-4 text-rose-600" />
-            <span className="font-bold text-slate-800">ThaiFlood SOS</span>
-            <span className="hidden sm:inline">— แพลตฟอร์มอาสาเพื่อช่วยเหลือผู้ประสบอุทกภัย</span>
+            <LifeBuoy className="size-4 text-red-600" />
+            <span className="font-bold text-slate-900">น้ำใจไทย (Nam-jai Thai)</span>
+            <span className="hidden sm:inline text-slate-500">— แพลตฟอร์มแจ้งเหตุและประสานงานกู้ภัยอุทกภัย 24 ชม.</span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <a href="tel:1784" className="font-semibold text-rose-600 transition-colors hover:text-rose-700">
+            <a href="tel:1784" className="font-bold text-red-600 transition-colors hover:text-red-700">
               ปภ. 1784
             </a>
-            <a href="tel:1669" className="font-semibold text-emerald-600 transition-colors hover:text-emerald-700">
+            <a href="tel:1669" className="font-bold text-emerald-600 transition-colors hover:text-emerald-700">
               การแพทย์ 1669
             </a>
-            <a href="tel:199" className="font-semibold text-sky-600 transition-colors hover:text-sky-700">
+            <a href="tel:199" className="font-bold text-sky-600 transition-colors hover:text-sky-700">
               กู้ภัย 199
             </a>
             {hasAdminUrl && (

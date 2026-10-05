@@ -161,24 +161,65 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
           </p>
         </div>
 
-        {/* Live stat strip */}
+        {/* Live Triage Ribbon */}
         {requests.length > 0 && (
-          <dl className="flex shrink-0 gap-1.5">
-            {[
-              { label: 'วิกฤต', value: counts.critical, tone: 'text-rose-600' },
-              { label: 'รอดำเนินการ', value: counts.pending, tone: 'text-amber-600' },
-              { label: 'กำลังช่วย', value: counts.responding, tone: 'text-sky-600' },
-              { label: 'สำเร็จ', value: counts.completed, tone: 'text-emerald-600' }
-            ].map(stat => (
-              <div
-                key={stat.label}
-                className="min-w-[4.25rem] rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 text-center shadow-[var(--shadow-soft)]"
-              >
-                <dd className={`text-lg font-black leading-none tabular-nums ${stat.tone}`}>{stat.value}</dd>
-                <dt className="mt-1 text-[10px] font-medium text-slate-500">{stat.label}</dt>
-              </div>
-            ))}
-          </dl>
+          <div className="flex shrink-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <button
+              onClick={() => {
+                setUrgencyFilter('CRITICAL');
+                setStatusFilter('ALL');
+              }}
+              title="คลิกเพื่อกรองเคสวิกฤต"
+              className={`px-3 py-2 text-center transition-colors hover:bg-red-50/60 ${
+                urgencyFilter === 'CRITICAL' ? 'bg-red-50 ring-1 ring-inset ring-red-200' : ''
+              }`}
+            >
+              <div className="text-lg font-black leading-none text-red-600 tabular-nums">{counts.critical}</div>
+              <div className="mt-1 text-[11px] font-bold text-red-900">วิกฤต</div>
+            </button>
+            <div className="h-7 w-px bg-slate-200" />
+            <button
+              onClick={() => {
+                setStatusFilter('PENDING');
+                setUrgencyFilter('ALL');
+              }}
+              title="คลิกเพื่อกรองเคสที่รอดำเนินการ"
+              className={`px-3 py-2 text-center transition-colors hover:bg-amber-50/60 ${
+                statusFilter === 'PENDING' ? 'bg-amber-50 ring-1 ring-inset ring-amber-200' : ''
+              }`}
+            >
+              <div className="text-lg font-black leading-none text-amber-600 tabular-nums">{counts.pending}</div>
+              <div className="mt-1 text-[11px] font-bold text-amber-900">รอช่วย</div>
+            </button>
+            <div className="h-7 w-px bg-slate-200" />
+            <button
+              onClick={() => {
+                setStatusFilter('RESPONDING');
+                setUrgencyFilter('ALL');
+              }}
+              title="คลิกเพื่อกรองเคสที่กำลังเดินทางไปช่วย"
+              className={`px-3 py-2 text-center transition-colors hover:bg-sky-50/60 ${
+                statusFilter === 'RESPONDING' ? 'bg-sky-50 ring-1 ring-inset ring-sky-200' : ''
+              }`}
+            >
+              <div className="text-lg font-black leading-none text-sky-600 tabular-nums">{counts.responding}</div>
+              <div className="mt-1 text-[11px] font-bold text-sky-900">กำลังช่วย</div>
+            </button>
+            <div className="h-7 w-px bg-slate-200" />
+            <button
+              onClick={() => {
+                setStatusFilter('COMPLETED');
+                setUrgencyFilter('ALL');
+              }}
+              title="คลิกเพื่อกรองเคสที่ช่วยเหลือสำเร็จแล้ว"
+              className={`px-3 py-2 text-center transition-colors hover:bg-emerald-50/60 ${
+                statusFilter === 'COMPLETED' ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-200' : ''
+              }`}
+            >
+              <div className="text-lg font-black leading-none text-emerald-600 tabular-nums">{counts.completed}</div>
+              <div className="mt-1 text-[11px] font-bold text-emerald-900">สำเร็จ</div>
+            </button>
+          </div>
         )}
       </header>
 

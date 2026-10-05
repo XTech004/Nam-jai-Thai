@@ -30,9 +30,30 @@ const ICONS: Record<EmergencyContact['iconType'], LucideIcon> = {
 };
 
 const QUICK_DIALS = [
-  { phone: '1784', label: 'สายด่วนนิรภัย ปภ.', desc: 'แจ้งอุทกภัย กู้ภัยทั่วประเทศ', icon: Shield, tone: 'from-rose-500 to-red-700' },
-  { phone: '1669', label: 'การแพทย์ฉุกเฉิน', desc: 'ผู้ป่วยวิกฤต เจ็บป่วยฉุกเฉิน', icon: Ambulance, tone: 'from-emerald-500 to-teal-700' },
-  { phone: '199', label: 'ดับเพลิง & กู้ภัย', desc: 'บรรเทาสาธารณภัย ค้นหาคน', icon: Truck, tone: 'from-sky-500 to-indigo-700' }
+  {
+    phone: '1784',
+    label: 'สายด่วนนิรภัย ปภ.',
+    desc: 'แจ้งอุทกภัย กู้ภัยทั่วประเทศ',
+    icon: Shield,
+    accent: 'border-l-4 border-l-red-600 bg-white',
+    tone: 'text-red-600'
+  },
+  {
+    phone: '1669',
+    label: 'การแพทย์ฉุกเฉิน (EMS)',
+    desc: 'ผู้ป่วยวิกฤต เจ็บป่วยฉุกเฉิน',
+    icon: Ambulance,
+    accent: 'border-l-4 border-l-emerald-600 bg-white',
+    tone: 'text-emerald-600'
+  },
+  {
+    phone: '199',
+    label: 'ดับเพลิง & บรรเทาสาธารณภัย',
+    desc: 'กู้ภัย ค้นหา ช่วยเหลือผู้ประสบภัย',
+    icon: Truck,
+    accent: 'border-l-4 border-l-sky-600 bg-white',
+    tone: 'text-sky-600'
+  }
 ];
 
 export const EmergencyHotlines: React.FC = () => {
@@ -57,7 +78,7 @@ export const EmergencyHotlines: React.FC = () => {
 
       <header className="mb-6 text-center">
         <h2 className="page-title flex items-center justify-center gap-2.5">
-          <PhoneCall className="size-6 text-rose-600" />
+          <PhoneCall className="size-6 text-red-600" />
           เบอร์สายด่วนฉุกเฉิน
         </h2>
         <p className="page-subtitle">
@@ -67,19 +88,19 @@ export const EmergencyHotlines: React.FC = () => {
 
       {/* One-tap dials */}
       <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {QUICK_DIALS.map(({ phone, label, desc, icon: Icon, tone }) => (
+        {QUICK_DIALS.map(({ phone, label, desc, accent, tone }) => (
           <a
             key={phone}
             href={`tel:${phone}`}
-            className={`group flex items-center justify-between gap-3 rounded-3xl bg-gradient-to-br ${tone} p-4 text-white shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-lift)] active:scale-[0.98]`}
+            className={`group flex items-center justify-between gap-3 rounded-2xl border border-slate-200 ${accent} p-4 shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]`}
           >
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-semibold opacity-80">{label}</p>
-              <p className="text-2xl font-black leading-tight tabular-nums">{phone}</p>
-              <p className="mt-0.5 truncate text-[11px] opacity-75">{desc}</p>
+              <p className="truncate text-xs font-bold text-slate-800">{label}</p>
+              <p className={`mt-0.5 text-3xl font-black leading-tight tabular-nums ${tone}`}>{phone}</p>
+              <p className="mt-1 truncate text-[11px] text-slate-500">{desc}</p>
             </div>
-            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/20 transition-transform duration-200 group-hover:scale-110">
-              <Icon className="size-5" />
+            <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-700 transition-colors group-hover:bg-slate-900 group-hover:text-white">
+              <PhoneCall className="size-5" />
             </span>
           </a>
         ))}

@@ -49,28 +49,28 @@ const URGENCY_OPTIONS: {
     id: 'CRITICAL',
     title: 'วิกฤตสีแดง',
     headline: 'อันตรายถึงชีวิต',
-    hint: 'ติดบนหลังคา, ผู้ป่วยติดเตียง, เด็กทารก, น้ำมิดชั้น 1',
+    hint: 'ติดบนหลังคา, ผู้ป่วยติดเตียง, เด็กทารก, น้ำท่วมมิดชั้น 1',
     icon: OctagonAlert,
-    active: 'border-rose-500 bg-rose-50 ring-2 ring-rose-200/70 text-rose-700',
-    idle: 'border-slate-200 bg-white hover:border-rose-300 hover:bg-rose-50/40 text-slate-700'
+    active: 'border-red-600 bg-red-50/90 text-red-950 ring-2 ring-red-400/80 shadow-xs',
+    idle: 'border-slate-200 bg-white hover:border-red-300 hover:bg-red-50/30 text-slate-800'
   },
   {
     id: 'URGENT',
     title: 'เร่งด่วนสีเหลือง',
     headline: 'ต้องการเรืออพยพ',
-    hint: 'น้ำเข้าบ้านระดับเอว-อก, ไฟฟ้าถูกตัด, เสบียงหมด',
+    hint: 'น้ำเข้าบ้านระดับเอว-อก, ไฟฟ้าดับ, เสบียงหมด',
     icon: AlertOctagon,
-    active: 'border-amber-500 bg-amber-50 ring-2 ring-amber-200/70 text-amber-800',
-    idle: 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/40 text-slate-700'
+    active: 'border-amber-500 bg-amber-50/90 text-amber-950 ring-2 ring-amber-400/80 shadow-xs',
+    idle: 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30 text-slate-800'
   },
   {
     id: 'NORMAL',
     title: 'ทั่วไปสีเขียว',
     headline: 'ยังปลอดภัยในบ้าน',
-    hint: 'ขอถุงยังชีพ, น้ำดื่มสะอาด, ยาสามัญ, อาหารสัตว์',
+    hint: 'ขอถุงยังชีพ, น้ำดื่มสะอาด, ยาสามัญ, ประสานงาน',
     icon: Info,
-    active: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200/70 text-emerald-800',
-    idle: 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40 text-slate-700'
+    active: 'border-emerald-600 bg-emerald-50/90 text-emerald-950 ring-2 ring-emerald-400/80 shadow-xs',
+    idle: 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 text-slate-800'
   }
 ];
 
@@ -532,15 +532,15 @@ export const SosForm: React.FC<SosFormProps> = ({
 
       {/* Hero */}
       <header className="mb-6 text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-rose-100 bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700">
-          <span className="size-1.5 animate-sos-pulse rounded-full bg-rose-600" />
-          รับแจ้งเหตุฉุกเฉินน้ำท่วม 24 ชม.
-        </span>
-        <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-[28px]">
-          แจ้งขอความช่วยเหลือ
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1 text-xs font-semibold text-slate-700 shadow-xs">
+          <span className="size-2 rounded-full bg-red-600 animate-sos-pulse" />
+          <span>ศูนย์ประสานงานอุทกภัย 24 ชั่วโมง</span>
+        </div>
+        <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+          แจ้งขอความช่วยเหลือฉุกเฉิน
         </h1>
-        <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-slate-500">
-          กรอกข้อมูลเบื้องต้น 4 ขั้นตอน เพื่อให้ทีมกู้ภัยเข้าถึงจุดเกิดเหตุได้เร็วและแม่นยำที่สุด
+        <p className="mx-auto mt-2 max-w-lg text-sm text-slate-600">
+          กรอกข้อมูลและระบุพิกัด เพื่อส่งต่อให้ทีมกู้ภัยและจิตอาสาในพื้นที่เข้าช่วยเหลือทันที
         </p>
       </header>
 
@@ -566,10 +566,10 @@ export const SosForm: React.FC<SosFormProps> = ({
                       <Icon className="size-3.5" strokeWidth={2.5} />
                       {title}
                     </span>
-                    {isSelected && <CheckCircle2 className="size-4 shrink-0 opacity-80" />}
+                    {isSelected && <CheckCircle2 className="size-4 shrink-0 opacity-90" />}
                   </div>
                   <div className="text-[13px] font-bold text-slate-900">{headline}</div>
-                  <p className="mt-1 text-[11px] leading-snug text-slate-500">{hint}</p>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-600">{hint}</p>
                 </button>
               );
             })}
@@ -586,13 +586,13 @@ export const SosForm: React.FC<SosFormProps> = ({
                     type="button"
                     onClick={() => setWaterLevel(id)}
                     aria-pressed={isSelected}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[12px] font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-medium transition-all duration-150 ${
                       isSelected
-                        ? 'border-sky-400 bg-sky-50 font-bold text-sky-800 ring-2 ring-sky-100'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                        ? 'border-sky-600 bg-sky-50 font-bold text-sky-950 ring-2 ring-sky-200'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <Icon className={`size-4 shrink-0 ${isSelected ? 'text-sky-600' : 'text-slate-400'}`} />
+                    <Icon className={`size-4 shrink-0 ${isSelected ? 'text-sky-700' : 'text-slate-400'}`} />
                     <span className="leading-tight">{label}</span>
                   </button>
                 );
@@ -614,10 +614,10 @@ export const SosForm: React.FC<SosFormProps> = ({
             type="button"
             onClick={handleGetGPS}
             disabled={gpsLoading}
-            className={`mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-[13px] font-bold transition-all duration-200 active:scale-[0.99] ${
+            className={`mb-4 flex w-full min-h-[3rem] items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition-all active:scale-[0.99] ${
               coords
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                : 'border-transparent bg-slate-900 text-white shadow-[0_10px_26px_-14px_rgba(15,23,42,0.8)] hover:bg-slate-800'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-xs'
+                : 'border-slate-900 bg-slate-900 text-white shadow-xs hover:bg-slate-800'
             }`}
           >
             {gpsLoading ? (
@@ -826,36 +826,36 @@ export const SosForm: React.FC<SosFormProps> = ({
             {PEOPLE_FIELDS.map(({ key, label, critical }) => (
               <div
                 key={key}
-                className={`flex items-center justify-between gap-1 rounded-2xl border p-2 ${
-                  critical ? 'border-rose-200 bg-rose-50/70' : 'border-slate-200 bg-slate-50/60'
+                className={`flex items-center justify-between gap-1.5 rounded-xl border p-2.5 ${
+                  critical ? 'border-red-200 bg-red-50/70' : 'border-slate-200 bg-white'
                 }`}
               >
-                <span className={`text-[11px] font-semibold leading-tight ${critical ? 'text-rose-700' : 'text-slate-600'}`}>
+                <span className={`text-xs font-bold leading-tight ${critical ? 'text-red-900' : 'text-slate-800'}`}>
                   {label}
                 </span>
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => updatePeople(key, -1)}
                     aria-label={`ลด${label}`}
-                    className={`grid size-6 place-items-center rounded-lg border bg-white transition-colors active:scale-95 ${
-                      critical ? 'border-rose-200 text-rose-600' : 'border-slate-200 text-slate-600'
+                    className={`grid size-8 place-items-center rounded-lg border bg-white transition-all active:scale-90 ${
+                      critical ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    <Minus className="size-3" strokeWidth={3} />
+                    <Minus className="size-3.5" strokeWidth={2.5} />
                   </button>
-                  <span className={`w-4 text-center text-[13px] font-bold tabular-nums ${critical ? 'text-rose-700' : 'text-slate-900'}`}>
+                  <span className={`w-5 text-center text-sm font-black tabular-nums ${critical ? 'text-red-700' : 'text-slate-900'}`}>
                     {people[key]}
                   </span>
                   <button
                     type="button"
                     onClick={() => updatePeople(key, 1)}
                     aria-label={`เพิ่ม${label}`}
-                    className={`grid size-6 place-items-center rounded-lg border bg-white transition-colors active:scale-95 ${
-                      critical ? 'border-rose-200 text-rose-600' : 'border-slate-200 text-slate-600'
+                    className={`grid size-8 place-items-center rounded-lg border bg-white transition-all active:scale-90 ${
+                      critical ? 'border-red-300 text-red-700 hover:bg-red-50' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    <Plus className="size-3" strokeWidth={3} />
+                    <Plus className="size-3.5" strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
@@ -1038,11 +1038,11 @@ export const SosForm: React.FC<SosFormProps> = ({
         </p>
 
         {/* Sticky submit */}
-        <div className="sticky bottom-24 z-30 rounded-3xl border border-slate-200/80 bg-white/85 p-2.5 shadow-[var(--shadow-lift)] backdrop-blur-xl sm:bottom-4">
+        <div className="sticky bottom-24 z-30 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-lift backdrop-blur-xl sm:bottom-4">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 px-6 py-3.5 text-[15px] font-extrabold text-white shadow-[0_14px_30px_-14px_rgba(225,29,72,0.85)] transition-all hover:from-rose-700 hover:to-red-700 active:scale-[0.99] disabled:opacity-70 sm:text-base"
+            className="flex w-full min-h-[3.25rem] items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3.5 text-base font-bold text-white shadow-xs transition-all hover:bg-red-700 active:scale-[0.99] disabled:opacity-70"
           >
             {isSubmitting ? (
               <>
@@ -1052,12 +1052,12 @@ export const SosForm: React.FC<SosFormProps> = ({
             ) : (
               <>
                 <AlertOctagon className="size-5" />
-                ส่งข้อมูลแจ้งขอความช่วยเหลือ (SOS)
+                ส่งข้อมูลขอความช่วยเหลือทันที (SOS)
               </>
             )}
           </button>
-          <p className="mt-1.5 text-center text-[10px] text-slate-400">
-            ส่งแล้วระบบจะสร้างรหัสเคส พร้อมปุ่มส่ง SMS และแชร์เข้า LINE กู้ภัยได้ทันที
+          <p className="mt-1.5 text-center text-xs text-slate-500">
+            หลังกดส่ง ระบบจะสร้างรหัสเคส พร้อมช่องทางโทรออกฉุกเฉินและแชร์พิกัดทันที
           </p>
         </div>
       </form>

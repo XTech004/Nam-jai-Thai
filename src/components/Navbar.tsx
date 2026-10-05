@@ -85,13 +85,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => setActiveTab('form')}
           className="group flex min-w-0 items-center gap-2.5 text-left"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-[0_6px_18px_-8px_rgba(225,29,72,0.9)] transition-transform duration-300 group-hover:-rotate-6">
-            <LifeBuoy className="size-5" strokeWidth={2.25} />
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-900 text-white shadow-xs transition-transform duration-200 group-hover:scale-105">
+            <LifeBuoy className="size-5 text-rose-500" strokeWidth={2.5} />
           </span>
           <span className="min-w-0">
             <span className="flex items-center gap-1.5">
-              <span className="truncate text-base font-extrabold tracking-tight text-slate-900 sm:text-lg">
-                ThaiFlood<span className="text-rose-600">SOS</span>
+              <span className="truncate text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+                น้ำใจไทย
+              </span>
+              <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">
+                SOS
               </span>
               <span
                 className="hidden size-1.5 shrink-0 rounded-full sm:block"
@@ -99,8 +102,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={live ? 'เชื่อมต่อระบบสดแล้ว' : 'โหมดออฟไลน์'}
               />
             </span>
-            <span className="hidden truncate text-[11px] text-slate-500 sm:block">
-              ศูนย์ประสานงานกู้ภัยน้ำท่วม 24 ชม.
+            <span className="hidden truncate text-[11px] font-medium text-slate-500 sm:block">
+              ศูนย์ประสานงานกู้ภัยอุทกภัย 24 ชม.
             </span>
           </span>
         </button>
@@ -109,9 +112,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           {criticalCount > 0 && (
             <button
               onClick={() => setActiveTab('feed')}
-              className="hidden items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 md:inline-flex"
+              className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
             >
-              <span className="size-1.5 animate-sos-pulse rounded-full bg-rose-600" />
+              <span className="size-1.5 animate-sos-pulse rounded-full bg-red-600" />
               วิกฤต {criticalCount} เคส
             </button>
           )}
@@ -123,18 +126,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   onClick={onOpenRescuerVerify}
                   title="คลิกเพื่อดูหรือแก้ไขข้อมูลสังกัดกู้ภัย"
-                  className="inline-flex items-center gap-1 rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-950 shadow-2xs hover:bg-orange-100 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-950 hover:bg-amber-100 transition-colors cursor-pointer"
                 >
-                  <span className="size-2 rounded-full bg-orange-500 animate-pulse" />
-                  <span>🚒 กู้ภัย</span>
-                  <span className="hidden sm:inline text-orange-800 font-medium">({currentUser.rescueOrg ? currentUser.rescueOrg.slice(0, 16) : 'ยืนยันแล้ว'})</span>
+                  <ShieldCheck className="size-3.5 text-amber-700" />
+                  <span>กู้ภัย</span>
+                  <span className="hidden sm:inline font-medium text-amber-800">
+                    ({currentUser.rescueOrg ? currentUser.rescueOrg.slice(0, 16) : 'ยืนยันแล้ว'})
+                  </span>
                 </button>
               ) : (
                 onOpenRescuerVerify && (
                   <button
                     type="button"
                     onClick={onOpenRescuerVerify}
-                    className="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-orange-50 hover:text-orange-800 hover:border-orange-300 transition-colors cursor-pointer"
+                    className="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <span>🚒 คุณเป็นกู้ภัย?</span>
                   </button>
@@ -155,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={onLogoutUser}
                   title="ออกจากระบบ"
-                  className="rounded-full px-1.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                  className="rounded-full px-1.5 text-[10px] font-bold text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 cursor-pointer"
                 >
                   ออก
                 </button>
@@ -165,7 +170,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onOpenUserAuth && (
               <button
                 onClick={onOpenUserAuth}
-                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer shadow-xs"
               >
                 <svg className="size-3.5 fill-[#06C755] shrink-0" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 5.82 2 10.53c0 2.94 1.76 5.53 4.45 6.99-.18.66-.66 2.39-.75 2.76-.12.45.16.44.34.32.14-.09 1.94-1.32 2.73-1.85.4.06.81.09 1.23.09 5.52 0 10-3.82 10-8.53S17.52 2 12 2z"/>
@@ -178,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {activeTab !== 'form' && (
             <button
               onClick={() => setActiveTab('form')}
-              className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-[0_8px_20px_-10px_rgba(225,29,72,0.9)] transition-all hover:bg-rose-700 active:scale-95 sm:text-sm"
+              className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-all hover:bg-red-700 active:scale-95 sm:text-sm"
             >
               <PlusCircle className="size-4" />
               <span className="hidden sm:inline">แจ้งขอความช่วยเหลือ</span>
@@ -198,10 +203,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 key={key}
                 onClick={() => setActiveTab(key)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-all duration-200 ${
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-all duration-150 ${
                   isActive
-                    ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-100'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <Icon className="size-4" strokeWidth={isActive ? 2.4 : 2} />
@@ -209,7 +214,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {key === 'feed' && requests.length > 0 && (
                   <span
                     className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums ${
-                      isActive ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-600'
+                      isActive ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-700'
                     }`}
                   >
                     {requests.length}
