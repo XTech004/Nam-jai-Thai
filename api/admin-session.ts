@@ -1,4 +1,4 @@
-import { bearer, isAdminToken } from '../server/security';
+import { bearer, isAdminToken } from '../server/security.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');

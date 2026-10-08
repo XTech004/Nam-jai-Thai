@@ -1,8 +1,10 @@
-import { database } from '../server/security';
+import { database } from '../server/security.js';
+
+const env = (globalThis as any).process?.env || {};
 
 export default async function handler(_req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');
-  const configured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const configured = Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
   if (!configured) return res.status(503).json({ ready: false, message: 'ยังไม่ได้ตั้งค่า Supabase server-side environment variables' });
   try {
     const db = database();

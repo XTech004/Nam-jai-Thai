@@ -1,5 +1,4 @@
-import { bearer, database, fromDbRow, isAdminToken, sendLineAlert, toDbRow, validRequest } from '../server/security';
-import { randomUUID } from 'node:crypto';
+import { bearer, database, fromDbRow, isAdminToken, sendLineAlert, toDbRow, validRequest } from '../server/security.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');
@@ -17,7 +16,7 @@ export default async function handler(req: any, res: any) {
       }
       if (allowed !== true) return res.status(429).json({ error: 'ส่งคำขอถี่เกินไป กรุณารอสักครู่ หรือโทร 1784 หากเป็นเหตุฉุกเฉิน' });
       const now = new Date().toISOString();
-      const id = `SOS-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
+      const id = `SOS-${new Date().getFullYear()}-${globalThis.crypto.randomUUID().slice(0, 8).toUpperCase()}`;
       const accepted = { ...request, id, createdAt: now, updatedAt: now, status: 'PENDING' };
       const { data, error } = await db.from('sos_requests').insert(toDbRow(accepted)).select('*').single();
       if (error || !data) {
@@ -64,9 +63,12 @@ export default async function handler(req: any, res: any) {
 }
 
 async function rateLimitFingerprint(ip: string): Promise<string> {
-  const { createHmac } = await import('node:crypto');
-  const secret = process.env.RATE_LIMIT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  return createHmac('sha256', secret).update(ip).digest('hex');
+  const env = (globalThis as any).process?.env || {};
+  const secret = env.RATE_LIMIT_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const encoder = new TextEncoder();
+  const key = await globalThis.crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await globalThis.crypto.subtle.sign('HMAC', key, encoder.encode(ip));
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 async function sendAll(db: any, res: any) {

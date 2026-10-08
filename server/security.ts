@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
+const env = (globalThis as any).process?.env || {};
+
 export function bearer(req: any): string | null {
   const value = String(req.headers?.authorization || '');
   return value.startsWith('Bearer ') ? value.slice(7).trim() : null;
 }
 
 export async function isAdminToken(token: string | null): Promise<boolean> {
-  const channelId = process.env.LINE_CHANNEL_ID || '2011792268';
-  const adminId = process.env.ADMIN_LINE_USER_ID;
+  const channelId = env.LINE_CHANNEL_ID || '2011792268';
+  const adminId = env.ADMIN_LINE_USER_ID;
   if (!token || !adminId) return false;
   try {
     const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
@@ -25,8 +27,8 @@ export async function isAdminToken(token: string | null): Promise<boolean> {
 }
 
 export function database() {
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = env.SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) throw new Error('ระบบฐานข้อมูลยังไม่ได้ตั้งค่า');
   return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
@@ -94,8 +96,8 @@ export function validRequest(req: any): boolean {
 }
 
 export async function sendLineAlert(req: any): Promise<{ sent: boolean; message: string }> {
-  const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  const target = process.env.LINE_TARGET_ID;
+  const accessToken = env.LINE_CHANNEL_ACCESS_TOKEN;
+  const target = env.LINE_TARGET_ID;
   if (!accessToken || !target) return { sent: false, message: 'ยังไม่ได้ตั้งค่าช่องทางแจ้งเตือน LINE' };
   const text = [
     `🚨 แจ้งขอความช่วยเหลือ #${req.id} (${req.urgency})`,
