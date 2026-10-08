@@ -9,9 +9,6 @@ import {
   Map as MapIcon,
   Maximize2,
   Layers,
-  CloudRain,
-  Waves,
-  Sparkles,
   Satellite,
 } from 'lucide-react';
 
@@ -34,28 +31,15 @@ const THAI_URGENCY: Record<SOSRequest['urgency'], string> = {
   NORMAL: 'ทั่วไป'
 };
 
-const RADAR_CELLS = [
-  { center: [20.38, 99.88] as [number, number], radius: 28000, label: 'พายุฝนตกหนักรุนแรง', mm: 52, color: '#9333ea' },
-  { center: [19.9, 99.85] as [number, number], radius: 32000, label: 'ฝนตกหนักต่อเนื่อง', mm: 42, color: '#dc2626' },
-  { center: [18.82, 99.02] as [number, number], radius: 26000, label: 'ฝนตกปานกลาง-หนัก', mm: 28, color: '#f59e0b' },
-  { center: [19.18, 99.9] as [number, number], radius: 24000, label: 'ฝนตกต่อเนื่อง', mm: 22, color: '#3b82f6' },
-  { center: [17.15, 99.8] as [number, number], radius: 30000, label: 'ฝนตกปานกลาง', mm: 19, color: '#06b6d4' }
-];
-
 export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, isAdmin = false }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const gistdaLayerRef = useRef<L.TileLayer | null>(null);
-  const radarLayerRef = useRef<L.LayerGroup | null>(null);
 
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
   const [mapType, setMapType] = useState<'streets' | 'satellite'>('streets');
-  const [showGistda, setShowGistda] = useState(true);
-  const [showRadar, setShowRadar] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [gistdaLayerError, setGistdaLayerError] = useState('');
 
   const filteredRequests = requests.filter(r => {
     if (urgencyFilter !== 'ALL' && r.urgency !== urgencyFilter) return false;
@@ -73,12 +57,11 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
     });
 
     baseTileLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap | GISTDA | ThaiFlood SOS',
+      attribution: '&copy; OpenStreetMap | ThaiFlood SOS',
       maxZoom: 19,
       zIndex: 1
     }).addTo(map);
 
-    radarLayerRef.current = L.layerGroup().addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
 
@@ -107,75 +90,16 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
       mapType === 'satellite'
         ? L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            { attribution: '&copy; Esri & GISTDA | ThaiFlood SOS', maxZoom: 18, zIndex: 1 }
+            { attribution: '&copy; Esri | ThaiFlood SOS', maxZoom: 18, zIndex: 1 }
           )
         : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap | GISTDA | ThaiFlood SOS',
+            attribution: '&copy; OpenStreetMap | ThaiFlood SOS',
             maxZoom: 19,
             zIndex: 1
           });
 
     baseTileLayerRef.current.addTo(map);
   }, [mapType]);
-
-  // GISTDA flood extent tiles (satellite-derived, previous 1-day period).
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    if (gistdaLayerRef.current) {
-      map.removeLayer(gistdaLayerRef.current);
-      gistdaLayerRef.current = null;
-    }
-    setGistdaLayerError('');
-    if (!showGistda) return;
-
-    const layer = L.tileLayer('/api/gistda-flood-tile?z={z}&x={x}&y={y}', {
-      attribution: '&copy; GISTDA — ข้อมูลพื้นที่น้ำท่วมย้อนหลัง 1 วัน',
-      opacity: 0.72,
-      maxZoom: 18,
-      tms: true,
-      zIndex: 2
-    });
-    layer.on('tileerror', () => setGistdaLayerError('โหลดชั้นข้อมูล GISTDA ไม่สำเร็จ โปรดตรวจ API key หรือการเชื่อมต่อ'));
-    layer.on('tileload', () => setGistdaLayerError(''));
-    layer.addTo(map);
-    gistdaLayerRef.current = layer;
-
-    return () => {
-      map.removeLayer(layer);
-      if (gistdaLayerRef.current === layer) gistdaLayerRef.current = null;
-    };
-  }, [showGistda]);
-
-  // Clearly marked sample layer; it is not a live precipitation product.
-  useEffect(() => {
-    const layer = radarLayerRef.current;
-    if (!layer) return;
-    layer.clearLayers();
-    if (!showRadar) return;
-
-    RADAR_CELLS.forEach(cell => {
-      const circle = L.circle(cell.center, {
-        radius: cell.radius,
-        color: cell.color,
-        fillColor: cell.color,
-        fillOpacity: 0.18,
-        weight: 1.5
-      });
-
-      circle.bindTooltip(
-        `<div style="font-size:11px;line-height:1.5;">
-           <b>พื้นที่ฝนตัวอย่าง (ไม่ใช่เรดาร์สด)</b><br/>
-           ${cell.label}<br/>
-           ความเข้มฝน: <b>${cell.mm} มม./ชม.</b>
-         </div>`,
-        { sticky: true }
-      );
-
-      layer.addLayer(circle);
-    });
-  }, [showRadar]);
 
   // SOS markers
   useEffect(() => {
@@ -296,8 +220,6 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
   };
 
   const layerToggles = [
-    { key: 'gistda', label: 'GISTDA', icon: Waves, on: showGistda, toggle: () => setShowGistda(v => !v), onClass: 'border-violet-200 bg-violet-50 text-violet-700' },
-    { key: 'radar', label: 'เรดาร์ฝน AI (ตัวอย่าง)', icon: CloudRain, on: showRadar, toggle: () => setShowRadar(v => !v), onClass: 'border-sky-200 bg-sky-50 text-sky-700' },
     { key: 'markers', label: `หมุด SOS (${filteredRequests.length})`, icon: MapPin, on: showMarkers, toggle: () => setShowMarkers(v => !v), onClass: 'border-rose-200 bg-rose-50 text-rose-700' }
   ];
 
@@ -312,10 +234,6 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
           </h2>
           <p className="page-subtitle flex flex-wrap items-center gap-x-2 gap-y-1">
             <span>แตะที่หมุดเพื่อดูรายละเอียด โทรติดต่อ หรือเปิดระบบนำทาง</span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600">
-              <Sparkles className="size-3" />
-              GISTDA 1 วันย้อนหลัง · WeatherNext เป็นข้อมูลตัวอย่าง
-            </span>
           </p>
         </div>
 
@@ -352,12 +270,6 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
           style={{ width: '100%', height: 'clamp(420px, 68vh, 720px)' }}
           className="rounded-2xl"
         />
-
-        {gistdaLayerError && showGistda && (
-          <div role="status" className="absolute right-4 top-4 z-20 max-w-xs rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-sm backdrop-blur">
-            {gistdaLayerError}
-          </div>
-        )}
 
         {/* Floating urgency filter */}
         <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white/92 p-1 shadow-[var(--shadow-soft)] backdrop-blur-md">
@@ -402,31 +314,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
         <div className="pointer-events-none absolute bottom-5 left-5 z-20 hidden w-56 rounded-2xl border border-slate-200 bg-white/92 p-3 shadow-[var(--shadow-soft)] backdrop-blur-md sm:block">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">คำอธิบายสัญลักษณ์</p>
 
-          <div className="mb-2">
-            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-violet-700">
-              <Waves className="size-3" />
-              พื้นที่น้ำท่วมจาก GISTDA (ย้อนหลัง 1 วัน)
-            </p>
-            <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
-              <li className="col-span-2 text-[10px] leading-relaxed text-slate-500">
-                แผนที่แสดงขอบเขตที่ตรวจพบจากข้อมูลดาวเทียม ไม่ใช่ระดับน้ำ ณ วินาทีปัจจุบัน
-              </li>
-            </ul>
-          </div>
-
-          <div className="mb-2 border-t border-slate-100 pt-2">
-            <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-sky-700">
-              <CloudRain className="size-3" />
-              WeatherNext (ข้อมูลตัวอย่าง)
-            </p>
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-              <span>เบาบาง</span>
-              <span className="h-1.5 flex-1 rounded-full bg-gradient-to-r from-sky-400 via-amber-400 to-purple-600" />
-              <span>พายุหนัก</span>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 pt-2">
+          <div>
             <p className="mb-1 text-[10px] font-bold text-slate-700">หมุดเคส SOS</p>
             <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
               {[
