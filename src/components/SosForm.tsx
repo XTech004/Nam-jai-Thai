@@ -33,7 +33,7 @@ import { LocationPreviewMap } from './LocationPreviewMap';
 import { reverseGeocodeThaiLocation } from '../utils/reverseGeocoding';
 
 interface SosFormProps {
-  onSubmitSuccess: (newRequest: SOSRequest) => void;
+  onSubmitSuccess: (newRequest: SOSRequest) => Promise<SOSRequest>;
   currentUser?: UserProfile | null;
   onOpenUserAuth?: () => void;
 }
@@ -160,6 +160,7 @@ export const SosForm: React.FC<SosFormProps> = ({
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submissionError, setSubmissionError] = useState('');
 
   // Google Maps URL & Precision Coordinates
   const [googleMapsInput, setGoogleMapsInput] = useState<string>('');
@@ -481,7 +482,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   };
 
   // Form Validation & Submit (Ordered top-to-bottom according to UI form sections)
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { [key: string]: string } = {};
     let firstMissingElementId = '';
@@ -563,13 +564,14 @@ export const SosForm: React.FC<SosFormProps> = ({
     }
 
     setFormErrors({});
+    setSubmissionError('');
     setIsSubmitting(true);
 
     // Coordinates are validated above so this is always a real user-confirmed pin.
     const finalCoordinates = coords!;
 
     const newSosRequest: SOSRequest = {
-      id: `SOS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `SOS-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       urgency: urgency!,
@@ -594,19 +596,15 @@ export const SosForm: React.FC<SosFormProps> = ({
       createdByUserId: currentUser?.id || undefined,
     };
 
-    // Track as my case on this device
-    addMyCaseId(newSosRequest.id);
-
     try {
-      localStorage.setItem(LAST_SOS_KEY, Date.now().toString());
-    } catch (e) {
-      // ignore
-    }
-
-    setTimeout(() => {
+      const savedRequest = await onSubmitSuccess(newSosRequest);
+      addMyCaseId(savedRequest.id);
+      try { localStorage.setItem(LAST_SOS_KEY, Date.now().toString()); } catch { /* optional local cooldown */ }
       setIsSubmitting(false);
-      onSubmitSuccess(newSosRequest);
-    }, 400);
+    } catch (error) {
+      setIsSubmitting(false);
+      setSubmissionError(error instanceof Error ? error.message : 'บันทึกคำขอไม่สำเร็จ กรุณาโทร 1784 หรือ 1669 โดยตรง');
+    }
   };
 
   return (
@@ -1194,13 +1192,13 @@ export const SosForm: React.FC<SosFormProps> = ({
         <p className="flex items-start gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50 px-3.5 py-3 text-[11px] leading-relaxed text-amber-900">
           <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <span>
-            <b>ระบบรักษาความปลอดภัย & กฎหมาย:</b> ข้อมูลนี้จะส่งตรงถึงทีมกู้ภัยเพื่อจัดสรรเรือและกำลังพล
-            การแจ้งเหตุเท็จหรือกดเล่นมีความผิดตามประมวลกฎหมายอาญา มาตรา 137 และ พ.ร.บ.คอมพิวเตอร์
+            <b>โปรดทราบ:</b> การส่งแบบฟอร์มเป็นการบันทึกคำขอในระบบเท่านั้น ยังไม่ยืนยันว่าหน่วยกู้ภัยได้รับหรือรับเคสแล้ว
           </span>
         </p>
 
         {/* Sticky submit */}
         <div className="sticky bottom-24 z-30 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-lift backdrop-blur-xl sm:bottom-4">
+          {submissionError && <div role="alert" className="mb-2 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-900">{submissionError} <a className="underline" href="tel:1784">โทร 1784</a> หรือ <a className="underline" href="tel:1669">1669</a></div>}
           <button
             type="submit"
             disabled={isSubmitting}

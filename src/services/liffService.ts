@@ -125,3 +125,17 @@ export function isLiffInClient(): boolean {
   if (!isInitialized) return false;
   return liff.isInClient();
 }
+
+/** Returns a LINE ID token for server-side signature/claims verification. */
+export async function getLineIdToken(): Promise<string | null> {
+  try {
+    if (!isInitialized) {
+      await liff.init({ liffId: LIFF_ID });
+      isInitialized = true;
+    }
+    return liff.isLoggedIn() ? liff.getIDToken() : null;
+  } catch (err) {
+    console.warn('Could not obtain LINE ID token:', err);
+    return null;
+  }
+}

@@ -1,5 +1,3 @@
-import type { IncomingMessage, ServerResponse } from 'http';
-
 /**
  * Vercel Serverless Function: /api/resolve-maps
  * Resolves Google Maps URLs (including short links like maps.app.goo.gl)
@@ -7,14 +5,8 @@ import type { IncomingMessage, ServerResponse } from 'http';
  * Prioritizes the true location pin (!3d!4d) over the camera viewport (@lat,lng).
  */
 export default async function handler(req: any, res: any) {
-  // Allow CORS from any origin
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   try {
     const rawUrl = req.method === 'POST' ? req.body?.url : req.query?.url;
@@ -23,6 +15,15 @@ export default async function handler(req: any, res: any) {
     }
 
     const trimmedUrl = rawUrl.trim();
+    const isAllowedMapsHost = (hostname: string) => {
+      const host = hostname.toLowerCase();
+      return host === 'goo.gl' || host.endsWith('.goo.gl') || host === 'google.com' || host.endsWith('.google.com');
+    };
+    let inputUrl: URL;
+    try { inputUrl = new URL(trimmedUrl); } catch { return res.status(400).json({ success: false, error: 'Invalid URL' }); }
+    if (inputUrl.protocol !== 'https:' || !isAllowedMapsHost(inputUrl.hostname)) {
+      return res.status(400).json({ success: false, error: 'Only HTTPS Google Maps links are supported' });
+    }
 
     // Helper to extract place name from Google Maps URL if available
     const extractPlaceName = (text: string): string | null => {
@@ -125,16 +126,30 @@ export default async function handler(req: any, res: any) {
     }
 
     // Follow redirect to resolve short URLs (e.g. maps.app.goo.gl/...)
-    const response = await fetch(trimmedUrl, {
-      redirect: 'follow',
-      headers: {
+    let response: Response | null = null;
+    let currentUrl = trimmedUrl;
+    for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+      const current = new URL(currentUrl);
+      if (current.protocol !== 'https:' || !isAllowedMapsHost(current.hostname)) {
+        return res.status(400).json({ success: false, error: 'Google Maps redirected to a blocked host' });
+      }
+      response = await fetch(currentUrl, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(8000),
+        headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'th,en-US;q=0.9,en;q=0.8'
-      }
-    });
+        }
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get('location');
+      if (!location || redirectCount === 5) return res.status(400).json({ success: false, error: 'Too many or invalid redirects' });
+      currentUrl = new URL(location, currentUrl).toString();
+    }
+    if (!response) return res.status(502).json({ success: false, error: 'Unable to resolve map URL' });
 
-    const finalUrl = response.url || trimmedUrl;
+    const finalUrl = currentUrl;
     let coords = extractCoords(finalUrl);
     let placeName = extractPlaceName(finalUrl);
 

@@ -514,67 +514,6 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
             )}
           </div>
 
-          {/* Admin actions — collapsed behind one control */}
-          {isAdmin && (
-            <div ref={adminMenuRef} className="relative mb-4 flex justify-end">
-              <button
-                onClick={() => setShowAdminMenu(v => !v)}
-                className="chip border-slate-200 bg-white text-slate-600 shadow-xs hover:border-slate-300 hover:text-slate-900"
-              >
-                <SlidersHorizontal className="size-3.5" />
-                จัดการข้อมูล
-                <ChevronDown className={`size-3 transition-transform ${showAdminMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showAdminMenu && (
-                <div className="absolute right-0 top-full z-20 mt-2 flex w-56 animate-fade flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[var(--shadow-lift)]">
-                  {onDeleteAllCompleted && counts.completed > 0 && (
-                    <button
-                      onClick={() => {
-                        setShowAdminMenu(false);
-                        if (window.confirm(`คุณต้องการลบเคสที่ช่วยเหลือสำเร็จแล้วทั้งหมด (${counts.completed} เคส) ออกจากระบบหรือไม่?`)) {
-                          onDeleteAllCompleted();
-                        }
-                      }}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-rose-600 transition-colors hover:bg-rose-50"
-                    >
-                      <Trash2 className="size-3.5" />
-                      ลบเคสสำเร็จแล้ว ({counts.completed})
-                    </button>
-                  )}
-
-                  {onResetMock && (
-                    <button
-                      onClick={() => {
-                        setShowAdminMenu(false);
-                        onResetMock();
-                      }}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-slate-600 transition-colors hover:bg-slate-100"
-                    >
-                      <Users className="size-3.5" />
-                      รีเซ็ตเป็นข้อมูลตัวอย่าง
-                    </button>
-                  )}
-
-                  {onClearAll && requests.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setShowAdminMenu(false);
-                        if (window.confirm(`⚠️ คำเตือน: คุณต้องการล้างข้อมูลทั้งหมดให้ระบบว่างเปล่า (${requests.length} เคส) หรือไม่?\n\nข้อมูลจะถูกล้างออกจากฐานข้อมูลอย่างถาวร`)) {
-                          onClearAll();
-                        }
-                      }}
-                      className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[12px] font-semibold text-rose-700 transition-colors hover:bg-rose-50"
-                    >
-                      <Trash2 className="size-3.5" />
-                      ล้างกระดานให้โล่ง ({requests.length})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Case list */}
           {filteredRequests.length === 0 ? (
             <div className="surface p-12 text-center">

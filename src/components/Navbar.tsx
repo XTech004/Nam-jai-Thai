@@ -13,7 +13,6 @@ import {
   Radio
 } from 'lucide-react';
 import type { SOSRequest, UserProfile } from '../types/sos';
-import { isSupabaseActive } from '../services/supabaseClient';
 import { isMyCase } from '../services/userService';
 
 export type TabKey = 'form' | 'feed' | 'map' | 'hotlines' | 'guide' | 'login';
@@ -43,7 +42,6 @@ interface NavbarProps {
   onLogoutUser?: () => void;
   onOpenAdminLogin?: () => void;
   onLogoutAdmin?: () => void;
-  onOpenRescuerVerify?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -57,10 +55,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoutUser,
   onOpenAdminLogin,
   onLogoutAdmin,
-  onOpenRescuerVerify,
 }) => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const isDbCloud = isSupabaseActive();
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -77,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const criticalCount = requests.filter(r => r.urgency === 'CRITICAL' && r.status === 'PENDING').length;
   const myCasesCount = requests.filter(r => isMyCase(r, currentUser || null)).length;
-  const live = isDbCloud && isOnline;
+  const live = isOnline;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl backdrop-saturate-150">
@@ -134,37 +130,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {currentUser ? (
             <div className="flex items-center gap-1.5">
-              {currentUser.role === 'ADMIN' ? (
+              {isAdmin ? (
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-900"
-                  title="สิทธิ์แอดมินสำหรับ demo"
+                  title="สิทธิ์แอดมินยืนยันโดยเซิร์ฟเวอร์"
                 >
                   <ShieldCheck className="size-3.5" />
-                  <span>แอดมิน (demo)</span>
+                  <span>แอดมิน</span>
                 </span>
-              ) : currentUser.role === 'RESCUER' ? (
-                <button
-                  type="button"
-                  onClick={onOpenRescuerVerify}
-                  title="คลิกเพื่อดูหรือแก้ไขข้อมูลสังกัดกู้ภัย"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-950 hover:bg-amber-100 transition-colors cursor-pointer"
-                >
-                  <ShieldCheck className="size-3.5 text-amber-700" />
-                  <span>กู้ภัย</span>
-                  <span className="hidden sm:inline font-medium text-amber-800">
-                    ({currentUser.rescueOrg ? currentUser.rescueOrg.slice(0, 16) : 'ยืนยันแล้ว'})
-                  </span>
-                </button>
               ) : (
-                onOpenRescuerVerify && (
-                  <button
-                    type="button"
-                    onClick={onOpenRescuerVerify}
-                    className="hidden sm:inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <span>🚒 คุณเป็นกู้ภัย?</span>
-                  </button>
-                )
+                null
               )}
 
               <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-1.5 text-xs font-semibold text-slate-800">

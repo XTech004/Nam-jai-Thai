@@ -46,21 +46,17 @@
 
 ---
 
-## 🛠️ วิธีตั้งค่าฐานข้อมูล Supabase (2 นาที)
+## 🛠️ ตั้งค่าระบบสำหรับทดลองใช้งานแบบจำกัด
 
 1. เข้าไปที่ [supabase.com](https://supabase.com) แล้วกด **Sign In / Sign Up** (ฟรี)
 2. กด **New Project** ตั้งชื่อโปรเจกต์ เช่น `flood-relief-sos` และตั้งรหัสผ่านฐานข้อมูล
 3. เมื่อโปรเจกต์สร้างเสร็จ ไปที่เมนู **SQL Editor** ทางซ้าย
 4. เปิดไฟล์ [`supabase/schema.sql`](supabase/schema.sql) ในโปรเจกต์นี้ คัดลอกคำสั่งทั้งหมดไปวางแล้วกด **Run**
-5. ไปที่ **Project Settings** > **API** คัดลอกค่า:
-   - **Project URL**
-   - **anon public API key**
-6. สร้างไฟล์ `.env` ในโฟลเดอร์โปรเจกต์:
-   ```env
-   VITE_SUPABASE_URL=https://your-project-id.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   ```
-   *(หรือเปิดเว็บแอปแล้วกดที่ปุ่ม Database ที่แถบด้านบน เพื่อกรอกค่าและทดสอบการเชื่อมต่อได้ทันที)*
+5. ไปที่ **Project Settings > API** คัดลอก Project URL และ `service_role` key ไปเก็บเป็น server-only values
+6. รัน migration [`supabase/migrations/20261009_temporary_pilot_security.sql`](supabase/migrations/20261009_temporary_pilot_security.sql) ใน SQL Editor เพื่อจำกัดตารางเคสและเปิด rate limit
+7. ใน Vercel > **Project Settings > Environment Variables** เพิ่มตัวแปรตาม [`.env.example`](.env.example). ใช้ `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `LINE_CHANNEL_ID`, `ADMIN_LINE_USER_ID`, `RATE_LIMIT_SECRET`
+8. ตั้ง `LINE_CHANNEL_ACCESS_TOKEN` และ `LINE_TARGET_ID` เพิ่มเมื่อพร้อมรับแจ้งเตือนทาง LINE ระบบส่งไปยังปลายทางที่กำหนดเท่านั้น
+9. ห้ามตั้ง `VITE_` นำหน้า service role key หรือ LINE access token เพราะ Vite จะเปิดเผยค่าใน browser bundle
 
 ---
 
@@ -85,20 +81,20 @@ npm run build
 1. นำโค้ดขึ้น GitHub (ดูหัวข้อ Git ด้านล่าง)
 2. เข้าไปที่ [vercel.com](https://vercel.com) แล้วล็อกอินด้วย GitHub
 3. กด **Add New Project** > เลือก Repository `flood-relief-sos`
-4. ในส่วน **Environment Variables** ให้เพิ่ม 2 ค่า:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-5. กด **Deploy** เว็บไซต์จะออนไลน์ทันที พร้อม HTTPS ฟรี!
+4. เพิ่ม server-only Environment Variables ตามหัวข้อ Supabase ด้านบน
+5. ตรวจสอบว่ารัน schema และ migration ในฐานข้อมูลแล้ว จึงค่อย Deploy
+
+ระบบนี้ยังเป็นต้นแบบ: รายการเคสและแผนที่เปิดให้ LINE ID แอดมินที่กำหนดไว้เท่านั้น และยังไม่มีการมอบหมายงานหรือยืนยันรับเคสจากหน่วยกู้ภัย การส่ง LINE แจ้งเตือนไม่ยืนยันว่าทีมได้รับหรือรับเคสแล้ว
 
 ### ทางเลือกที่ 2: Deploy บน Netlify (ฟรี)
 1. เข้าไปที่ [netlify.com](https://netlify.com) แล้วเชื่อมต่อกับ GitHub Repository
 2. ตั้งค่า Build Command: `npm run build` และ Publish Directory: `dist`
-3. เพิ่ม Environment Variables ใน Site Configuration แล้วกด Deploy
+3. Static hosting บน Netlify ยังไม่ให้ API routes ชุดนี้ทำงาน ต้องย้าย API ไป Netlify Functions ก่อน
 
 ### ทางเลือกที่ 3: Deploy บน GitHub Pages (ฟรี)
 - โปรเจกต์นี้มีไฟล์ [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) ให้แล้ว
 - เพียงเปิดไปที่ Repository บน GitHub > Settings > Pages > Source เลือก **GitHub Actions**
-- เมื่อ push โค้ดเข้า branch `main` ระบบจะ build และ deploy ให้อัตโนมัติ
+- GitHub Pages ใช้เสิร์ฟหน้าเว็บ static เท่านั้น จึงไม่รองรับ API routes/การเก็บ secret ของระบบนี้
 
 ### ทางเลือกที่ 4: รันผ่าน Docker
 ```bash

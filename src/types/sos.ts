@@ -59,6 +59,9 @@ export interface SOSRequest {
   // ผู้สร้างเคส (สำหรับสิทธิ์การแก้ไขและแสดงเคสของฉัน)
   createdByLineUserId?: string;
   createdByUserId?: string;
+  /** Response metadata; these values are not stored in the database. */
+  notificationSent?: boolean;
+  notificationMessage?: string;
 }
 
 export interface EmergencyContact {

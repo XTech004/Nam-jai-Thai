@@ -17,15 +17,11 @@ import { getGoogleMapsUrl } from '../utils/formatters';
 interface SuccessModalProps {
   request: SOSRequest;
   onClose: () => void;
-  onViewInFeed: () => void;
-  onViewOnMap: () => void;
 }
 
 export const SuccessModal: React.FC<SuccessModalProps> = ({
   request,
   onClose,
-  onViewInFeed,
-  onViewOnMap
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const shareText = buildSosShareText(request);
@@ -58,7 +54,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
           <div className="w-14 h-14 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2.5 shadow-md">
             <CheckCircle className="w-9 h-9" />
           </div>
-          <h2 className="text-xl font-bold">บันทึกข้อมูลขอความช่วยเหลือสำเร็จ!</h2>
+          <h2 className="text-xl font-bold">บันทึกคำขอในระบบแล้ว</h2>
           <p className="text-xs text-emerald-100 mt-1">
             รหัสเคสของคุณ: <span className="font-mono font-bold bg-white/20 px-2 py-0.5 rounded text-white">{request.id}</span>
           </p>
@@ -66,10 +62,11 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
 
         {/* Action Buttons for Disaster Victims */}
         <div className="p-5 space-y-4">
-          <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+          <div className={`${request.notificationSent ? 'bg-amber-50 border-amber-200 text-amber-950' : 'bg-red-50 border-red-300 text-red-950'} border p-3 rounded-xl text-xs flex items-start gap-2`}>
             <span className="text-base">⚡</span>
             <div>
-              <span className="font-bold">แนะนำเร่งด่วน:</span> แนะนำให้กดปุ่มส่งเข้า LINE หรือกดคัดลอกข้อความไปโพสต์ในกลุ่มกู้ภัยท้องถิ่น และส่ง SMS หากเน็ตเริ่มช้า
+              <span className="font-bold">{request.notificationSent ? 'ระบบส่งการแจ้งเตือนไปยัง LINE ที่กำหนดแล้ว' : 'ยังส่งแจ้งเตือนถึงทีมไม่ได้'}</span>
+              {' '}{request.notificationMessage || 'การบันทึกเคสไม่ใช่การยืนยันว่าหน่วยกู้ภัยรับเรื่องหรือกำลังเดินทาง'} โทร 1784 หรือ 1669 หากต้องการความช่วยเหลือฉุกเฉินทันที
             </div>
           </div>
 
@@ -146,23 +143,9 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
             </pre>
           </div>
 
-          {/* Bottom navigation buttons */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
-            <button
-              onClick={onViewOnMap}
-              className="flex-1 py-2.5 px-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 flex items-center justify-center gap-1.5"
-            >
-              <MapPin className="w-4 h-4" />
-              <span>ดูตำแหน่งบนแผนที่</span>
-            </button>
-            <button
-              onClick={onViewInFeed}
-              className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 flex items-center justify-center gap-1.5"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>ไปติดตามสถานะเคส</span>
-            </button>
-          </div>
+          <p className="border-t border-slate-100 pt-3 text-center text-xs leading-5 text-slate-600">
+            เก็บรหัสเคสนี้ไว้สำหรับอ้างอิง ระบบยังไม่มีหน้าติดตามสถานะสำหรับประชาชน และยังไม่มีหน่วยงานยืนยันรับเคสผ่านเว็บ
+          </p>
         </div>
 
       </div>

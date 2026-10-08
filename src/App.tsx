@@ -7,10 +7,7 @@ import { EmergencyHotlines } from './components/EmergencyHotlines';
 import { EmergencyGuide } from './components/EmergencyGuide';
 import { SuccessModal } from './components/SuccessModal';
 import { CaseDetailModal } from './components/CaseDetailModal';
-import { DatabaseConfigModal } from './components/DatabaseConfigModal';
-import { AdminLoginModal } from './components/AdminLoginModal';
 import { CitizenLoginPage } from './components/CitizenLoginPage';
-import { RescuerVerificationModal } from './components/RescuerVerificationModal';
 import type { SOSRequest, RequestStatus, UserProfile } from './types/sos';
 import { getCurrentUser, logoutUser, USER_AUTH_EVENT } from './services/userService';
 import { initLiff, logoutLine } from './services/liffService';
@@ -20,10 +17,8 @@ import {
   updateSOSRequestStatus, 
   updateSOSRequest,
   deleteSOSRequest,
-  deleteCompletedSOSRequests,
-  clearAllSOSRequests,
-  resetSOSRequestsToMock,
-  subscribeToSOSChanges
+  subscribeToSOSChanges,
+  verifyAdminSession,
 } from './services/db';
 import {
   AlertTriangle,
@@ -49,45 +44,17 @@ export function App() {
   const [requests, setRequests] = useState<SOSRequest[]>([]);
   const [submittedRequest, setSubmittedRequest] = useState<SOSRequest | null>(null);
   const [selectedCase, setSelectedCase] = useState<SOSRequest | null>(null);
-  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
-  const [isRescuerModalOpen, setIsRescuerModalOpen] = useState(false);
-
-  // Check if admin=1 is present in URL
-  const [hasAdminUrl, setHasAdminUrl] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('admin') === '1' || window.location.search.includes('admin=1');
-  });
-
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && localStorage.getItem('thai_flood_is_admin') === 'true';
-  });
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
-
-  // If visiting with ?admin=1 and not yet logged in, automatically open PIN login modal
-  useEffect(() => {
-    if (hasAdminUrl && !isAdmin) {
-      setIsAdminLoginOpen(true);
-    }
-  }, [hasAdminUrl, isAdmin]);
-
-  // Listen to popstate URL changes
-  useEffect(() => {
-    const handleUrlChange = () => {
-      const hasParam = new URLSearchParams(window.location.search).get('admin') === '1' || window.location.search.includes('admin=1');
-      setHasAdminUrl(hasParam);
-    };
-    window.addEventListener('popstate', handleUrlChange);
-    return () => window.removeEventListener('popstate', handleUrlChange);
-  }, []);
+  const [isServerAdmin, setIsServerAdmin] = useState(false);
 
   // Listen to user auth changes
   useEffect(() => {
     const handleAuthChange = (e: Event) => {
       const custom = e as CustomEvent<UserProfile | null>;
       setCurrentUser(custom.detail);
+      verifyAdminSession().then(setIsServerAdmin);
     };
     window.addEventListener(USER_AUTH_EVENT, handleAuthChange);
     return () => window.removeEventListener(USER_AUTH_EVENT, handleAuthChange);
@@ -96,6 +63,7 @@ export function App() {
   // Initialize LINE LIFF SDK on mount
   useEffect(() => {
     initLiff().then(res => {
+      verifyAdminSession().then(setIsServerAdmin);
       if (res.isLoggedIn && res.profile) {
         const u = getCurrentUser();
         if (u) setCurrentUser(u);
@@ -110,12 +78,11 @@ export function App() {
     logoutLine();
     logoutUser();
     setCurrentUser(null);
+    setIsServerAdmin(false);
   };
 
-  // Admin access is strictly active only when ?admin=1 is in URL AND PIN is verified
-  const isEffectiveAdmin = hasAdminUrl && isAdmin;
-  // Rescuer permission: Admin OR account verified with RESCUER / ADMIN role
-  const isRescuer = isEffectiveAdmin || currentUser?.role === 'RESCUER' || currentUser?.role === 'ADMIN';
+  // Client roles, query strings and PINs are not trusted; only the server's LINE ID-token check grants access.
+  const isRescuer = isServerAdmin;
 
   // Handle Delete Single Case (Admin)
   const handleDeleteCase = async (id: string) => {
@@ -126,32 +93,9 @@ export function App() {
     }
   };
 
-  // Handle Delete All Completed Cases (Admin)
-  const handleDeleteAllCompleted = async () => {
-    const updated = await deleteCompletedSOSRequests();
-    setRequests(updated);
-    if (selectedCase && selectedCase.status === 'COMPLETED') {
-      setSelectedCase(null);
-    }
-  };
-
-  // Handle Clear All Cases to make system blank (Admin)
-  const handleClearAll = async () => {
-    const updated = await clearAllSOSRequests();
-    setRequests(updated);
-    setSelectedCase(null);
-  };
-
   // Handle Admin Logout
   const handleLogoutAdmin = () => {
-    localStorage.removeItem('thai_flood_is_admin');
-    setIsAdmin(false);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('admin');
-      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
-      setHasAdminUrl(false);
-    }
+    handleLogoutUser();
   };
 
   // Load and subscribe to requests (Supabase Realtime or LocalStorage)
@@ -170,11 +114,20 @@ export function App() {
     };
   }, [refreshData]);
 
+  useEffect(() => {
+    if (!isServerAdmin) return;
+    refreshData();
+    const timer = window.setInterval(refreshData, 15_000);
+    return () => window.clearInterval(timer);
+  }, [isServerAdmin, refreshData]);
+
   // Handle new SOS submission
   const handleSubmitSuccess = async (newRequest: SOSRequest) => {
     const updated = await createSOSRequest(newRequest);
     setRequests(updated);
-    setSubmittedRequest(newRequest);
+    const saved = updated[0] || newRequest;
+    setSubmittedRequest(saved);
+    return saved;
   };
 
   // Handle Rescuer Status Update
@@ -206,15 +159,6 @@ export function App() {
     }
   };
 
-  // Reset mock data for demo
-  const handleResetMock = async () => {
-    if (window.confirm('คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นข้อมูลตัวอย่างตั้งต้นหรือไม่?')) {
-      const resetData = await resetSOSRequestsToMock();
-      setRequests(resetData);
-      setSelectedCase(null);
-    }
-  };
-
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans pb-24 sm:pb-0">
       {/* Top Navbar */}
@@ -223,13 +167,12 @@ export function App() {
         setActiveTab={setActiveTab}
         requests={requests}
         isAdmin={isRescuer}
-        showAdminOption={hasAdminUrl}
+        showAdminOption={isServerAdmin}
         currentUser={currentUser}
         onOpenUserAuth={() => setActiveTab('login')}
         onLogoutUser={handleLogoutUser}
-        onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
+        onOpenAdminLogin={() => setActiveTab('login')}
         onLogoutAdmin={handleLogoutAdmin}
-        onOpenRescuerVerify={() => setIsRescuerModalOpen(true)}
       />
 
       {/* Main Content Area — re-keyed so switching tabs animates in */}
@@ -243,7 +186,7 @@ export function App() {
         )}
 
         {activeTab === 'feed' && (
-          <RescueFeed
+          isServerAdmin ? <RescueFeed
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
@@ -252,19 +195,16 @@ export function App() {
             onOpenLineLogin={() => setActiveTab('login')}
             onGoToForm={() => setActiveTab('form')}
             isAdmin={isRescuer}
-            onResetMock={handleResetMock}
             onDeleteCase={handleDeleteCase}
-            onDeleteAllCompleted={handleDeleteAllCompleted}
-            onClearAll={handleClearAll}
-          />
+          /> : <RestrictedStaffView onLogin={() => setActiveTab('login')} />
         )}
 
         {activeTab === 'map' && (
-          <RescueMap
+          isServerAdmin ? <RescueMap
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             isAdmin={isRescuer}
-          />
+          /> : <RestrictedStaffView onLogin={() => setActiveTab('login')} />
         )}
 
         {activeTab === 'login' && (
@@ -287,44 +227,13 @@ export function App() {
         )}
       </main>
 
-      {/* Rescuer Organization Verification Modal */}
-      <RescuerVerificationModal
-        isOpen={isRescuerModalOpen}
-        onClose={() => setIsRescuerModalOpen(false)}
-        currentUser={currentUser}
-        onVerified={(user) => {
-          setCurrentUser(user);
-        }}
-        onOpenLineLogin={() => setActiveTab('login')}
-      />
-
-      {/* Admin Login Modal */}
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onLoginSuccess={() => setIsAdmin(true)}
-      />
-
-      {/* Database Configuration Modal (Admin only) */}
-      <DatabaseConfigModal
-        isOpen={isDbModalOpen}
-        onClose={() => setIsDbModalOpen(false)}
-        onConfigChanged={refreshData}
-      />
+      {/* Browser-side database credential configuration has been removed. */}
 
       {/* Post-Submission Success Modal */}
       {submittedRequest && (
         <SuccessModal
           request={submittedRequest}
           onClose={() => setSubmittedRequest(null)}
-          onViewInFeed={() => {
-            setSubmittedRequest(null);
-            setActiveTab('feed');
-          }}
-          onViewOnMap={() => {
-            setSubmittedRequest(null);
-            setActiveTab('map');
-          }}
         />
       )}
 
@@ -339,13 +248,7 @@ export function App() {
           isAdmin={isRescuer}
           onDeleteCase={handleDeleteCase}
           onOpenLineLogin={() => setActiveTab('login')}
-          onRequestAdminLogin={() => {
-            if (!currentUser) {
-              setActiveTab('login');
-            } else {
-              setIsRescuerModalOpen(true);
-            }
-          }}
+          onRequestAdminLogin={() => setActiveTab('login')}
         />
       )}
 
@@ -403,14 +306,6 @@ export function App() {
             <a href="tel:199" className="font-bold text-sky-600 transition-colors hover:text-sky-700">
               กู้ภัย 199
             </a>
-            {hasAdminUrl && (
-              <button
-                onClick={() => setIsDbModalOpen(true)}
-                className="text-slate-400 underline-offset-4 transition-colors hover:text-slate-700 hover:underline"
-              >
-                ตั้งค่าระบบ (Admin)
-              </button>
-            )}
           </div>
         </div>
       </footer>
@@ -419,3 +314,15 @@ export function App() {
 }
 
 export default App;
+
+function RestrictedStaffView({ onLogin }: { onLogin: () => void }) {
+  return (
+    <section className="mx-auto max-w-xl px-4 py-16 text-center">
+      <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-amber-100 text-amber-800">🔒</div>
+      <h1 className="mt-4 text-xl font-black text-slate-900">พื้นที่สำหรับเจ้าหน้าที่ที่ได้รับอนุญาต</h1>
+      <p className="mt-2 text-sm leading-6 text-slate-600">รายการเคสและพิกัดผู้แจ้งเป็นข้อมูลส่วนบุคคล ดูได้เฉพาะบัญชี LINE ที่ผู้ดูแลระบบอนุมัติไว้</p>
+      <button onClick={onLogin} className="mt-5 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white">เข้าสู่ระบบด้วย LINE</button>
+      <p className="mt-4 text-xs text-slate-500">ระบบจัดส่งและมอบหมายงานกู้ภัยยังไม่เปิดใช้งาน</p>
+    </section>
+  );
+}
