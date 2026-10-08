@@ -11,6 +11,8 @@ const SOS_SYNC_EVENT = 'thai_flood_sos_sync_event';
 export function toSOSRequest(row: any): SOSRequest {
   let googleMapsUrl: string | undefined = row.google_maps_url || undefined;
   let notes: string | undefined = row.notes || undefined;
+  let createdByLineUserId: string | undefined = row.created_by_line_user_id || undefined;
+  let createdByUserId: string | undefined = row.created_by_user_id || undefined;
 
   // Seamlessly unpack Google Maps URL if encoded in notes
   if (notes && notes.includes('[MAPS_URL:')) {
@@ -20,6 +22,28 @@ export function toSOSRequest(row: any): SOSRequest {
         googleMapsUrl = match[1].trim();
       }
       notes = notes.replace(/\[MAPS_URL:.*?\]/, '').trim() || undefined;
+    }
+  }
+
+  // Seamlessly unpack LINE User ID if encoded in notes
+  if (notes && notes.includes('[LINE_UID:')) {
+    const match = notes.match(/\[LINE_UID:(.*?)\]/);
+    if (match) {
+      if (!createdByLineUserId) {
+        createdByLineUserId = match[1].trim();
+      }
+      notes = notes.replace(/\[LINE_UID:.*?\]/, '').trim() || undefined;
+    }
+  }
+
+  // Seamlessly unpack Creator User ID if encoded in notes
+  if (notes && notes.includes('[CREATOR_UID:')) {
+    const match = notes.match(/\[CREATOR_UID:(.*?)\]/);
+    if (match) {
+      if (!createdByUserId) {
+        createdByUserId = match[1].trim();
+      }
+      notes = notes.replace(/\[CREATOR_UID:.*?\]/, '').trim() || undefined;
     }
   }
 
@@ -53,6 +77,8 @@ export function toSOSRequest(row: any): SOSRequest {
     imageUrl: row.image_url || undefined,
     responderNotes: row.responder_notes || '',
     rescuedBy: row.rescued_by || '',
+    createdByLineUserId,
+    createdByUserId,
   };
 }
 
@@ -61,6 +87,12 @@ export function toDBRow(req: SOSRequest): any {
   let notes = req.notes || '';
   if (req.googleMapsUrl && !notes.includes('[MAPS_URL:')) {
     notes = notes ? `${notes}\n[MAPS_URL:${req.googleMapsUrl}]` : `[MAPS_URL:${req.googleMapsUrl}]`;
+  }
+  if (req.createdByLineUserId && !notes.includes('[LINE_UID:')) {
+    notes = notes ? `${notes}\n[LINE_UID:${req.createdByLineUserId}]` : `[LINE_UID:${req.createdByLineUserId}]`;
+  }
+  if (req.createdByUserId && !notes.includes('[CREATOR_UID:')) {
+    notes = notes ? `${notes}\n[CREATOR_UID:${req.createdByUserId}]` : `[CREATOR_UID:${req.createdByUserId}]`;
   }
 
   return {
@@ -202,6 +234,37 @@ export async function createSOSRequest(newRequest: SOSRequest): Promise<SOSReque
   sendSosLineAlert(newRequest).catch((err) => {
     console.warn('Failed to send LINE SOS Alert notification:', err);
   });
+
+  return updatedLocal;
+}
+
+export async function updateSOSRequest(updatedRequest: SOSRequest): Promise<SOSRequest[]> {
+  const supabase = getSupabaseClient();
+  const updatedAt = new Date().toISOString();
+  const fullUpdated: SOSRequest = {
+    ...updatedRequest,
+    updatedAt,
+  };
+
+  const current = getLocalStoredRequests();
+  const updatedLocal = current.map((req) => req.id === fullUpdated.id ? fullUpdated : req);
+  saveToLocalStorage(updatedLocal);
+
+  if (supabase) {
+    try {
+      const dbRow = toDBRow(fullUpdated);
+      const { error } = await supabase
+        .from('sos_requests')
+        .update(dbRow)
+        .eq('id', fullUpdated.id);
+
+      if (error) {
+        console.error('Error updating SOSRequest in Supabase:', error.message);
+      }
+    } catch (err) {
+      console.error('Exception updating SOSRequest in Supabase:', err);
+    }
+  }
 
   return updatedLocal;
 }

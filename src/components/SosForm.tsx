@@ -26,7 +26,7 @@ import {
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
 import { COMMON_NEEDS_LIST } from '../data/mockData';
 import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddresses';
-import { formatPhone } from '../services/userService';
+import { formatPhone, addMyCaseId } from '../services/userService';
 import { parseGoogleMapsCoordinates } from '../utils/formatters';
 import { LocationPreviewMap } from './LocationPreviewMap';
 
@@ -116,8 +116,8 @@ export const SosForm: React.FC<SosFormProps> = ({
   onOpenUserAuth
 }) => {
   // Form State
-  const [urgency, setUrgency] = useState<UrgencyLevel>('CRITICAL');
-  const [waterLevel, setWaterLevel] = useState<WaterLevel>('SECOND_FLOOR');
+  const [urgency, setUrgency] = useState<UrgencyLevel | null>(null);
+  const [waterLevel, setWaterLevel] = useState<WaterLevel | null>(null);
 
   // Geolocation
   const [coords, setCoords] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
@@ -126,7 +126,7 @@ export const SosForm: React.FC<SosFormProps> = ({
 
   // People
   const [people, setPeople] = useState<PeopleCount>({
-    adults: 2,
+    adults: 0,
     elderly: 0,
     bedridden: 0,
     children: 0,
@@ -134,10 +134,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   });
 
   // Needs
-  const [selectedNeeds, setSelectedNeeds] = useState<string[]>([
-    'เรือท้องแบน/เรือกู้ภัยอพยพด่วน',
-    'น้ำดื่มสะอาด (ขาดแคลนหนัก)'
-  ]);
+  const [selectedNeeds, setSelectedNeeds] = useState<string[]>([]);
 
   // Contact & Location
   const [fullName, setFullName] = useState<string>('');
@@ -188,6 +185,7 @@ export const SosForm: React.FC<SosFormProps> = ({
         lng: parsed.lng,
         accuracy: 5
       });
+      setFormErrors(prev => ({ ...prev, coordinates: '' }));
       setIsParsedFromUrl(true);
       setDetectedPlaceName(parsed.placeName || '');
       if (parsed.placeName && !landmark) {
@@ -210,6 +208,7 @@ export const SosForm: React.FC<SosFormProps> = ({
             lng: data.lng,
             accuracy: 5
           });
+          setFormErrors(prev => ({ ...prev, coordinates: '' }));
           setIsParsedFromUrl(true);
           setDetectedPlaceName(data.placeName || '');
           if (data.placeName && !landmark) {
@@ -358,6 +357,7 @@ export const SosForm: React.FC<SosFormProps> = ({
           lng: position.coords.longitude,
           accuracy: Math.round(position.coords.accuracy)
         });
+        setFormErrors(prev => ({ ...prev, coordinates: '' }));
         setGpsLoading(false);
       },
       (error) => {
@@ -421,10 +421,25 @@ export const SosForm: React.FC<SosFormProps> = ({
     const errors: { [key: string]: string } = {};
     let firstMissingElementId = '';
 
+    if (!urgency) {
+      errors.urgency = 'กรุณาเลือกระดับความเร่งด่วน';
+      firstMissingElementId = 'field-urgency';
+    }
+    if (!waterLevel) {
+      errors.waterLevel = 'กรุณาเลือกระดับน้ำปัจจุบัน';
+      if (!firstMissingElementId) firstMissingElementId = 'field-waterLevel';
+    }
+
     // 1. Location — Province (Section 2)
     if (!province) {
       errors.province = 'กรุณาเลือกจังหวัด';
       if (!firstMissingElementId) firstMissingElementId = 'field-province';
+    }
+
+    // Never submit a fabricated map pin. Rescuers need a confirmed location.
+    if (!coords) {
+      errors.coordinates = 'กรุณาดึงพิกัด GPS หรือวางลิงก์ Google Maps ที่มีพิกัดก่อนส่งข้อมูล';
+      if (!firstMissingElementId) firstMissingElementId = 'field-googleMaps';
     }
 
     // 2. Location — District (Section 2)
@@ -485,17 +500,14 @@ export const SosForm: React.FC<SosFormProps> = ({
     setFormErrors({});
     setIsSubmitting(true);
 
-    const finalCoordinates = coords || {
-      lat: 18.7883 + (Math.random() - 0.5) * 0.1,
-      lng: 98.9853 + (Math.random() - 0.5) * 0.1,
-      accuracy: 100
-    };
+    // Coordinates are validated above so this is always a real user-confirmed pin.
+    const finalCoordinates = coords!;
 
     const newSosRequest: SOSRequest = {
       id: `SOS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      urgency,
+      urgency: urgency!,
       status: 'PENDING',
       fullName: fullName.trim(),
       primaryPhone: primaryPhone.trim(),
@@ -508,12 +520,17 @@ export const SosForm: React.FC<SosFormProps> = ({
       landmark: landmark.trim(),
       coordinates: finalCoordinates,
       googleMapsUrl: googleMapsInput.trim() || undefined,
-      waterLevel,
+      waterLevel: waterLevel!,
       people,
       needs: selectedNeeds.length > 0 ? selectedNeeds : ['ต้องการความช่วยเหลือเร่งด่วน'],
       notes: notes.trim() || undefined,
       imageUrl: imagePreview || undefined,
+      createdByLineUserId: currentUser?.lineUserId || undefined,
+      createdByUserId: currentUser?.id || undefined,
     };
+
+    // Track as my case on this device
+    addMyCaseId(newSosRequest.id);
 
     try {
       localStorage.setItem(LAST_SOS_KEY, Date.now().toString());
@@ -528,20 +545,36 @@ export const SosForm: React.FC<SosFormProps> = ({
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+    <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6 sm:py-8">
 
       {/* Hero */}
-      <header className="mb-6 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1 text-xs font-semibold text-slate-700 shadow-xs">
-          <span className="size-2 rounded-full bg-red-600 animate-sos-pulse" />
-          <span>ศูนย์ประสานงานอุทกภัย 24 ชั่วโมง</span>
+      <header className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-5 py-6 text-white shadow-[var(--shadow-lift)] sm:mb-6 sm:px-8 sm:py-7">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 size-64 rounded-full bg-red-500/15 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 right-1/3 size-48 rounded-full bg-sky-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-xl">
+            <div role="status" className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-slate-100 backdrop-blur">
+              <span className="size-2 rounded-full bg-red-400 animate-sos-pulse" />
+              ศูนย์ประสานงานอุทกภัย · เปิดรับแจ้งเหตุ 24 ชั่วโมง
+            </div>
+            <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
+              แจ้งขอความช่วยเหลือฉุกเฉิน
+            </h1>
+            <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-300">
+              ระบุจุดเกิดเหตุและสถานการณ์ เพื่อให้ทีมกู้ภัยในพื้นที่ประเมินและเข้าช่วยเหลือได้เร็วขึ้น
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <a href="tel:1784" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 text-sm font-bold text-white transition-colors hover:bg-white/15">
+              <Phone className="size-4 text-red-300" />
+              ปภ. 1784
+            </a>
+            <a href="tel:1669" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-red-600 px-3.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-red-500">
+              <Phone className="size-4" />
+              โทร 1669
+            </a>
+          </div>
         </div>
-        <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-          แจ้งขอความช่วยเหลือฉุกเฉิน
-        </h1>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-slate-600">
-          กรอกข้อมูลและระบุพิกัด เพื่อส่งต่อให้ทีมกู้ภัยและจิตอาสาในพื้นที่เข้าช่วยเหลือทันที
-        </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -550,7 +583,7 @@ export const SosForm: React.FC<SosFormProps> = ({
         <section className="surface p-5 sm:p-6">
           <SectionHeading step={1} title="ระดับความเร่งด่วน & สภาพน้ำ" required />
 
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div id="field-urgency" className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {URGENCY_OPTIONS.map(({ id, title, headline, hint, icon: Icon, active, idle }) => {
               const isSelected = urgency === id;
               return (
@@ -574,8 +607,9 @@ export const SosForm: React.FC<SosFormProps> = ({
               );
             })}
           </div>
+          {formErrors.urgency && <p role="alert" className="mt-2 text-xs font-medium text-rose-600">{formErrors.urgency}</p>}
 
-          <div className="mt-5">
+          <div id="field-waterLevel" className="mt-5">
             <span className="label">ระดับน้ำปัจจุบันรอบตัวคุณ</span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {WATER_OPTIONS.map(({ id, label, icon: Icon }) => {
@@ -598,6 +632,7 @@ export const SosForm: React.FC<SosFormProps> = ({
                 );
               })}
             </div>
+            {formErrors.waterLevel && <p role="alert" className="mt-2 text-xs font-medium text-rose-600">{formErrors.waterLevel}</p>}
           </div>
         </section>
 
@@ -642,6 +677,13 @@ export const SosForm: React.FC<SosFormProps> = ({
             <p className="mb-4 flex items-start gap-1.5 text-[11px] text-rose-600">
               <AlertCircle className="mt-px size-3.5 shrink-0" />
               <span>{gpsError}</span>
+            </p>
+          )}
+
+          {formErrors.coordinates && (
+            <p id="coordinates-error" role="alert" className="mb-4 flex items-start gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium leading-relaxed text-rose-700">
+              <AlertCircle className="mt-px size-4 shrink-0" />
+              <span>{formErrors.coordinates}</span>
             </p>
           )}
 

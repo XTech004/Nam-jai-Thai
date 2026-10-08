@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   MapPin,
@@ -16,11 +16,10 @@ import {
   Lock,
   ShieldCheck,
   CloudRain,
-  Sparkles,
-  TrendingUp,
-  MessageCircle
+  MessageCircle,
+  CheckCircle2
 } from 'lucide-react';
-import type { SOSRequest, RequestStatus } from '../types/sos';
+import type { SOSRequest, RequestStatus, UserProfile } from '../types/sos';
 import {
   formatThaiDateTime,
   getUrgencyInfo,
@@ -29,17 +28,20 @@ import {
   getGoogleMapsUrl
 } from '../utils/formatters';
 import { buildSosShareText, copyToClipboard, getLineShareUrl } from '../utils/shareHelpers';
-import { getWeatherNext3Forecast } from '../services/weatherAiService';
 import { maskPhone } from '../utils/privacy';
-import { getCurrentUser } from '../services/userService';
+import { getCurrentUser, isMyCase, canEditCase } from '../services/userService';
+import { EditCaseModal } from './EditCaseModal';
 
 interface CaseDetailModalProps {
   request: SOSRequest | null;
   onClose: () => void;
   onUpdateStatus: (id: string, status: RequestStatus, note?: string, rescuer?: string) => void;
+  onUpdateCase?: (updatedRequest: SOSRequest) => void;
   isAdmin?: boolean;
+  currentUser?: UserProfile | null;
   onDeleteCase?: (id: string) => void;
   onRequestAdminLogin?: () => void;
+  onOpenLineLogin?: () => void;
 }
 
 export const CaseDetailModal: React.FC<CaseDetailModalProps> = props => {
@@ -51,11 +53,15 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
   request,
   onClose,
   onUpdateStatus,
+  onUpdateCase,
   isAdmin = false,
+  currentUser = null,
   onDeleteCase,
-  onRequestAdminLogin
+  onRequestAdminLogin,
+  onOpenLineLogin
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<RequestStatus>(request.status);
   const [responderNotes, setResponderNotes] = useState<string>(request.responderNotes || '');
   const [rescuerName, setRescuerName] = useState<string>(() => {
@@ -73,11 +79,8 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
   const currentStatus = getStatusInfo(request.status);
   const mapsUrl = getGoogleMapsUrl(request.coordinates.lat, request.coordinates.lng);
   const shareText = buildSosShareText(request);
-
-  // WeatherNext 3 AI Forecast & Flood Hazard Analytics
-  const weather = useMemo(() => {
-    return getWeatherNext3Forecast(request.coordinates.lat, request.coordinates.lng, request.province);
-  }, [request.coordinates.lat, request.coordinates.lng, request.province]);
+  const isOwner = isMyCase(request, currentUser);
+  const editPermission = canEditCase(request, currentUser);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(shareText);
@@ -113,6 +116,11 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
               <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded">
                 {urgency.shortLabel}
               </span>
+              {isOwner && (
+                <span className="rounded-full bg-amber-400 text-slate-950 font-bold px-2 py-0.5 text-[11px] shadow-xs">
+                  ⭐ เคสของคุณ
+                </span>
+              )}
             </div>
             <h2 className="text-lg sm:text-xl font-bold">{request.fullName}</h2>
             <div className="text-xs text-white/80 flex items-center gap-1.5 mt-1">
@@ -131,6 +139,130 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+
+          {/* Rescue Response Status Banner (ดูว่ามีใครรับเรื่องแล้วหรือยัง) */}
+          {request.status === 'PENDING' && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 size-3 rounded-full bg-amber-500 animate-ping shrink-0" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-amber-900">
+                      🟡 สถานะ: รอทีมกู้ภัยรับเรื่อง
+                    </h4>
+                    <span className="text-[10px] font-bold bg-amber-200/90 text-amber-900 px-2 py-0.5 rounded-full">
+                      กำลังประสานงาน
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+                    ระบบได้บันทึกและกระจายพิกัดขอความช่วยเหลือสู่ศูนย์กู้ภัยในพื้นที่เรียบร้อยแล้ว ยังไม่มีหน่วยกู้ภัยกดรับเคส โปรดเปิดโทรศัพท์รอการติดต่อกลับ
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {request.status === 'RESPONDING' && (
+            <div className="rounded-2xl border border-sky-300 bg-sky-50/90 p-4 text-sky-950 shadow-xs">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 size-3 rounded-full bg-sky-600 animate-pulse shrink-0" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-sky-900">
+                      🚨 มีทีมกู้ภัยรับเรื่องแล้ว! กำลังเดินทางเข้าช่วยเหลือ
+                    </h4>
+                    <span className="text-[10px] font-bold bg-sky-200 text-sky-900 px-2 py-0.5 rounded-full">
+                      กำลังไปช่วย
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs text-sky-800">
+                    <div className="font-semibold text-sky-950">
+                      🚒 <b>หน่วยกู้ภัยที่รับผิดชอบ:</b> {request.rescuedBy || 'ทีมกู้ภัยในพื้นที่'}
+                    </div>
+                    {request.responderNotes && (
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-sky-200 mt-1">
+                        📝 <b>บันทึกจากเจ้าหน้าที่:</b> {request.responderNotes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {request.status === 'COMPLETED' && (
+            <div className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-4 text-emerald-950 shadow-xs">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 size-5 text-emerald-600 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-black text-emerald-900">
+                    🟢 ช่วยเหลือสำเร็จแล้ว
+                  </h4>
+                  <p className="mt-1 text-xs text-emerald-800">
+                    ทีมกู้ภัย ({request.rescuedBy || 'เจ้าหน้าที่'}) ได้เข้าช่วยเหลือผู้ประสบภัยในเคสนี้เรียบร้อยแล้ว
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {request.status === 'CANCELLED' && (
+            <div className="rounded-2xl border border-slate-300 bg-slate-100 p-4 text-slate-800 shadow-xs">
+              <div className="flex items-start gap-3">
+                <X className="mt-0.5 size-5 text-slate-500 shrink-0" />
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800">
+                    ⚪ คำขอนี้ถูกยกเลิกแล้ว
+                  </h4>
+                  <p className="mt-0.5 text-xs text-slate-600">
+                    ผู้แจ้งหรือเจ้าหน้าที่ได้ยกเลิกคำขอความช่วยเหลือนี้แล้ว
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Citizen Case Owner Action Banner */}
+          {isOwner && (
+            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="text-xs">
+                <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+                  <span>⭐ คุณเป็นผู้แจ้งเคสนี้</span>
+                  <span className="text-[10px] font-medium bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    เจ้าของเคส
+                  </span>
+                </div>
+                <p className="text-emerald-700 text-[11px] mt-0.5">
+                  คุณสามารถอัปเดตระดับน้ำ จำนวนคน หรือยกเลิกคำขอเมื่อปลอดภัยได้
+                </p>
+              </div>
+
+              {editPermission.allowed ? (
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                >
+                  <Edit3 className="size-3.5" />
+                  <span>แก้ไขข้อมูลเคสของคุณ</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenLineLogin) onOpenLineLogin();
+                  }}
+                  className="shrink-0 px-4 py-2 rounded-xl bg-[#06C755] hover:bg-[#05b34c] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                  title="เข้าสู่ระบบด้วย LINE เพื่อยืนยันสิทธิ์ในการแก้ไขเคสนี้"
+                >
+                  <svg className="size-3.5 fill-white shrink-0" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 5.82 2 10.53c0 2.94 1.76 5.53 4.45 6.99-.18.66-.66 2.39-.75 2.76-.12.45.16.44.34.32.14-.09 1.94-1.32 2.73-1.85.4.06.81.09 1.23.09 5.52 0 10-3.82 10-8.53S17.52 2 12 2z"/>
+                  </svg>
+                  <span>เข้าสู่ระบบด้วย LINE เพื่อแก้ไข</span>
+                </button>
+              )}
+            </div>
+          )}
           
           {/* Quick Rescuer Actions */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -192,79 +324,9 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
             </button>
           </div>
 
-          {/* Google DeepMind WeatherNext 3 AI Micro-Forecast & Flood Hazard */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-900 text-white shadow-md border border-indigo-500/30">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-indigo-500/20 text-cyan-400 flex items-center justify-center border border-indigo-500/30">
-                  <CloudRain className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-xs text-white">พยากรณ์ฝน AI (WeatherNext 3)</span>
-                    <span className="text-[9px] bg-cyan-400/20 text-cyan-300 font-bold px-1.5 py-0.2 rounded border border-cyan-400/30">
-                      Google DeepMind
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400">ความละเอียด 5 กม. • อัปเดตรายชั่วโมง</span>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                  weather.surgeRiskIndex === 'CRITICAL'
-                    ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                }`}>
-                  {weather.surgeRiskIndex === 'CRITICAL' ? '⚠️ เสี่ยงน้ำหลากวิกฤต' : '⚡ เสี่ยงน้ำหลากสูง'}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">ฝนสะสม 24 ชม.</span>
-                <span className="text-sm font-black text-cyan-300">{weather.rainAccumulation24h} มม.</span>
-              </div>
-              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">โอกาสฝนตก</span>
-                <span className="text-sm font-black text-blue-300">{weather.precipProbability}%</span>
-              </div>
-              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/60">
-                <span className="text-[10px] text-slate-400 block">แนวโน้มระดับน้ำ</span>
-                <span className="text-xs font-bold text-amber-300 flex items-center justify-center gap-0.5 mt-0.5">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>{weather.waterLevelTrend === 'RISING_RAPIDLY' ? 'น้ำขึ้นเร็วมาก' : 'น้ำกำลังขึ้น'}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Hourly Outlook Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 mb-2.5 scrollbar-none">
-              <span className="text-[10px] text-slate-400 shrink-0">แนวโน้ม 6 ชม:</span>
-              {weather.hourlyOutlook.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold shrink-0 border ${
-                    item.risk === 'danger'
-                      ? 'bg-red-950/70 text-red-200 border-red-500/40'
-                      : item.risk === 'warning'
-                      ? 'bg-amber-950/70 text-amber-200 border-amber-500/40'
-                      : 'bg-slate-800 text-slate-300 border-slate-700'
-                  }`}
-                >
-                  <span>{item.timeLabel}: </span>
-                  <span className="font-bold">{item.rainMm}mm</span>
-                </div>
-              ))}
-            </div>
-
-            {/* AI Operational Advisory */}
-            <div className="bg-indigo-950/70 p-2.5 rounded-xl border border-indigo-500/30 text-[11px] text-indigo-200 leading-relaxed flex items-start gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
-              <span>{weather.aiAdvisory}</span>
-            </div>
+          <div role="status" className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-950">
+            <CloudRain className="mt-0.5 size-4 shrink-0 text-amber-700" />
+            <span><b>ยังไม่ได้เชื่อมข้อมูลพยากรณ์ฝนจริง</b> ข้อมูลฝนและคำแนะนำจะยังไม่แสดงในเคสนี้ โปรดอ้างอิงประกาศจากกรมอุตุนิยมวิทยาและหน่วยงานท้องถิ่น</span>
           </div>
 
           {/* Location & Landmark Section */}
@@ -579,6 +641,27 @@ const CaseDetailView: React.FC<CaseDetailModalProps & { request: SOSRequest }> =
         </div>
 
       </div>
+
+      {/* Citizen Case Owner Edit Modal */}
+      {isEditModalOpen && (
+        <EditCaseModal
+          request={request}
+          isOpen={isEditModalOpen}
+          currentUser={currentUser}
+          onClose={() => setIsEditModalOpen(false)}
+          onSave={(updated) => {
+            if (onUpdateCase) {
+              onUpdateCase(updated);
+            }
+            setIsEditModalOpen(false);
+          }}
+          onOpenLineLogin={() => {
+            if (onOpenLineLogin) {
+              onOpenLineLogin();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

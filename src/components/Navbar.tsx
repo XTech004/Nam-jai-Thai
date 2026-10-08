@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { SOSRequest, UserProfile } from '../types/sos';
 import { isSupabaseActive } from '../services/supabaseClient';
+import { isMyCase } from '../services/userService';
 
 export type TabKey = 'form' | 'feed' | 'map' | 'hotlines' | 'guide';
 
@@ -75,6 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const criticalCount = requests.filter(r => r.urgency === 'CRITICAL' && r.status === 'PENDING').length;
+  const myCasesCount = requests.filter(r => isMyCase(r, currentUser || null)).length;
   const live = isDbCloud && isOnline;
 
   return (
@@ -109,13 +111,24 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <div className="ml-auto flex items-center gap-2">
+          {myCasesCount > 0 && (
+            <button
+              onClick={() => setActiveTab('feed')}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 cursor-pointer shadow-2xs"
+              title="ดูสถานะเคสขอความช่วยเหลือของคุณ"
+            >
+              <span className="size-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span>เคสของฉัน ({myCasesCount})</span>
+            </button>
+          )}
+
           {criticalCount > 0 && (
             <button
               onClick={() => setActiveTab('feed')}
               className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
             >
               <span className="size-1.5 animate-sos-pulse rounded-full bg-red-600" />
-              วิกฤต {criticalCount} เคส
+              <span className="hidden sm:inline">วิกฤต</span> {criticalCount} เคส
             </button>
           )}
 

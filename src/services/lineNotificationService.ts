@@ -1,6 +1,5 @@
 import type { SOSRequest } from '../types/sos';
 import { getUrgencyInfo, getWaterLevelInfo, getGoogleMapsUrl } from '../utils/formatters';
-import { getWeatherNext3Forecast } from './weatherAiService';
 
 const LINE_CONFIG_KEY = 'thai_flood_line_config';
 
@@ -73,7 +72,6 @@ export function getLineUniversalMsgUrl(text: string): string {
 export function buildLineFlexMessage(req: SOSRequest) {
   const urgency = getUrgencyInfo(req.urgency);
   const water = getWaterLevelInfo(req.waterLevel);
-  const weather = getWeatherNext3Forecast(req.coordinates.lat, req.coordinates.lng);
   const mapsUrl = getGoogleMapsUrl(req.coordinates.lat, req.coordinates.lng);
   const caseWebUrl = `https://nam-jai-thai.vercel.app/?case=${encodeURIComponent(req.id)}`;
   const lineChatUrl = req.lineId ? getLineDirectChatUrl(req.lineId) : null;
@@ -210,24 +208,6 @@ export function buildLineFlexMessage(req: SOSRequest) {
                   },
                 ]
               : []),
-          ],
-        },
-        // WeatherNext 3 radar insight
-        {
-          type: 'box',
-          layout: 'horizontal',
-          backgroundColor: '#0F172A',
-          cornerRadius: '8px',
-          paddingAll: '8px',
-          contents: [
-            {
-              type: 'text',
-              text: `🌧️ เรดาร์ WeatherNext: ฝน 24 ชม. ${weather.rainAccumulation24h} มม. (${weather.waterLevelTrend === 'RISING_RAPIDLY' ? 'น้ำขึ้นเร็วมาก' : 'น้ำกำลังขึ้น'})`,
-              size: 'xxs',
-              color: '#38BDF8',
-              wrap: true,
-              flex: 1,
-            },
           ],
         },
         // Contact details

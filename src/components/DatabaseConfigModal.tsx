@@ -436,7 +436,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.sos_requests;`;
                 <span>รองรับมาตรฐาน LINE Messaging API & Flex Message 100%</span>
               </div>
               <p className="text-[11px] text-emerald-800">
-                เนื่องจากบริการ LINE Notify เดิมได้ยุติให้บริการแล้ว ระบบน้ำใจไทยใช้ <b>LINE Messaging API</b> ซึ่งสามารถส่งการ์ดข้อมูลสีแดงวิกฤต พร้อมพิกัด GPS, เรดาร์ฝน WeatherNext 3, และปุ่มเปิดแชทกับผู้แจ้งได้โดยตรง!
+                เนื่องจากบริการ LINE Notify เดิมได้ยุติให้บริการแล้ว ระบบน้ำใจไทยใช้ <b>LINE Messaging API</b> เพื่อส่งข้อมูลเคส พิกัด GPS และปุ่มเปิดแชทกับผู้แจ้ง ขณะนี้ยังไม่มีข้อมูลเรดาร์ฝนจริงในข้อความแจ้งเตือน
               </p>
             </div>
 

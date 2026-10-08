@@ -4,7 +4,6 @@ import 'leaflet/dist/leaflet.css';
 import type { SOSRequest } from '../types/sos';
 import { getUrgencyInfo, getWaterLevelInfo, getGoogleMapsUrl } from '../utils/formatters';
 import { maskPhone } from '../utils/privacy';
-import { getGistdaFloodZones, type GistdaFloodZone } from '../services/weatherAiService';
 import {
   MapPin,
   Map as MapIcon,
@@ -14,7 +13,6 @@ import {
   Waves,
   Sparkles,
   Satellite,
-  LocateFixed
 } from 'lucide-react';
 
 interface RescueMapProps {
@@ -49,7 +47,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
   const mapInstanceRef = useRef<L.Map | null>(null);
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const gistdaLayerRef = useRef<L.LayerGroup | null>(null);
+  const gistdaLayerRef = useRef<L.TileLayer | null>(null);
   const radarLayerRef = useRef<L.LayerGroup | null>(null);
 
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
@@ -57,7 +55,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
   const [showGistda, setShowGistda] = useState(true);
   const [showRadar, setShowRadar] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
-  const [activeZone, setActiveZone] = useState<GistdaFloodZone | null>(null);
+  const [gistdaLayerError, setGistdaLayerError] = useState('');
 
   const filteredRequests = requests.filter(r => {
     if (urgencyFilter !== 'ALL' && r.urgency !== urgencyFilter) return false;
@@ -80,7 +78,6 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
       zIndex: 1
     }).addTo(map);
 
-    gistdaLayerRef.current = L.layerGroup().addTo(map);
     radarLayerRef.current = L.layerGroup().addTo(map);
     markersLayerRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
@@ -121,51 +118,37 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
     baseTileLayerRef.current.addTo(map);
   }, [mapType]);
 
-  // GISTDA satellite flood extent polygons
+  // GISTDA flood extent tiles (satellite-derived, previous 1-day period).
   useEffect(() => {
-    const layer = gistdaLayerRef.current;
-    if (!layer) return;
-    layer.clearLayers();
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (gistdaLayerRef.current) {
+      map.removeLayer(gistdaLayerRef.current);
+      gistdaLayerRef.current = null;
+    }
+    setGistdaLayerError('');
     if (!showGistda) return;
 
-    getGistdaFloodZones().forEach(zone => {
-      const polygon = L.polygon(zone.polygon, {
-        color: zone.strokeColor,
-        fillColor: zone.fillColor,
-        fillOpacity: 0.38,
-        weight: 2,
-        dashArray: zone.hazardLevel === 'CRITICAL' ? '5, 5' : undefined
-      });
-
-      const escape = (value: string) =>
-        value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-      polygon.bindPopup(`
-        <div style="min-width:230px;max-width:250px;padding:12px 14px;font-size:12px;line-height:1.5;color:#334155;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-            <span style="font-size:10px;font-weight:700;background:#f3e8ff;color:#6b21a8;padding:2px 7px;border-radius:999px;">GISTDA Satellite</span>
-            <span style="margin-left:auto;font-size:10px;font-weight:700;color:${zone.strokeColor};">
-              ${zone.hazardLevel === 'CRITICAL' ? 'วิกฤตสูงสุด' : 'เฝ้าระวัง'}
-            </span>
-          </div>
-          <div style="font-weight:800;font-size:14px;color:#0f172a;margin-bottom:6px;">${escape(zone.name)}</div>
-          <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:6px 9px;margin-bottom:6px;">
-            <span style="font-size:10px;color:#6b21a8;">ระดับน้ำท่วมประเมิน</span>
-            <div style="font-size:13px;font-weight:800;color:${zone.strokeColor};">${escape(zone.depthEstimate)}</div>
-          </div>
-          <p style="margin:0 0 6px;color:#475569;">${escape(zone.description)}</p>
-          <div style="border-top:1px solid #f1f5f9;padding-top:5px;font-size:10px;color:#94a3b8;">
-            ${escape(zone.satelliteSensor)} · ${escape(zone.detectionDate)}
-          </div>
-        </div>
-      `);
-
-      polygon.on('click', () => setActiveZone(zone));
-      layer.addLayer(polygon);
+    const layer = L.tileLayer('/api/gistda-flood-tile?z={z}&x={x}&y={y}', {
+      attribution: '&copy; GISTDA — ข้อมูลพื้นที่น้ำท่วมย้อนหลัง 1 วัน',
+      opacity: 0.72,
+      maxZoom: 18,
+      tms: true,
+      zIndex: 2
     });
+    layer.on('tileerror', () => setGistdaLayerError('โหลดชั้นข้อมูล GISTDA ไม่สำเร็จ โปรดตรวจ API key หรือการเชื่อมต่อ'));
+    layer.on('tileload', () => setGistdaLayerError(''));
+    layer.addTo(map);
+    gistdaLayerRef.current = layer;
+
+    return () => {
+      map.removeLayer(layer);
+      if (gistdaLayerRef.current === layer) gistdaLayerRef.current = null;
+    };
   }, [showGistda]);
 
-  // WeatherNext 3 precipitation radar cells
+  // Clearly marked sample layer; it is not a live precipitation product.
   useEffect(() => {
     const layer = radarLayerRef.current;
     if (!layer) return;
@@ -183,7 +166,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
 
       circle.bindTooltip(
         `<div style="font-size:11px;line-height:1.5;">
-           <b>เรดาร์ฝน AI (WeatherNext 3)</b><br/>
+           <b>พื้นที่ฝนตัวอย่าง (ไม่ใช่เรดาร์สด)</b><br/>
            ${cell.label}<br/>
            ความเข้มฝน: <b>${cell.mm} มม./ชม.</b>
          </div>`,
@@ -314,7 +297,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
 
   const layerToggles = [
     { key: 'gistda', label: 'GISTDA', icon: Waves, on: showGistda, toggle: () => setShowGistda(v => !v), onClass: 'border-violet-200 bg-violet-50 text-violet-700' },
-    { key: 'radar', label: 'เรดาร์ฝน AI', icon: CloudRain, on: showRadar, toggle: () => setShowRadar(v => !v), onClass: 'border-sky-200 bg-sky-50 text-sky-700' },
+    { key: 'radar', label: 'เรดาร์ฝน AI (ตัวอย่าง)', icon: CloudRain, on: showRadar, toggle: () => setShowRadar(v => !v), onClass: 'border-sky-200 bg-sky-50 text-sky-700' },
     { key: 'markers', label: `หมุด SOS (${filteredRequests.length})`, icon: MapPin, on: showMarkers, toggle: () => setShowMarkers(v => !v), onClass: 'border-rose-200 bg-rose-50 text-rose-700' }
   ];
 
@@ -331,7 +314,7 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
             <span>แตะที่หมุดเพื่อดูรายละเอียด โทรติดต่อ หรือเปิดระบบนำทาง</span>
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-violet-600">
               <Sparkles className="size-3" />
-              WeatherNext 3 + GISTDA
+              GISTDA 1 วันย้อนหลัง · WeatherNext เป็นข้อมูลตัวอย่าง
             </span>
           </p>
         </div>
@@ -369,6 +352,12 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
           style={{ width: '100%', height: 'clamp(420px, 68vh, 720px)' }}
           className="rounded-2xl"
         />
+
+        {gistdaLayerError && showGistda && (
+          <div role="status" className="absolute right-4 top-4 z-20 max-w-xs rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-[11px] font-semibold text-amber-900 shadow-sm backdrop-blur">
+            {gistdaLayerError}
+          </div>
+        )}
 
         {/* Floating urgency filter */}
         <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-1 rounded-full border border-slate-200 bg-white/92 p-1 shadow-[var(--shadow-soft)] backdrop-blur-md">
@@ -416,27 +405,19 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
           <div className="mb-2">
             <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-violet-700">
               <Waves className="size-3" />
-              ผิวน้ำท่วมจากดาวเทียม (GISTDA)
+              พื้นที่น้ำท่วมจาก GISTDA (ย้อนหลัง 1 วัน)
             </p>
             <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
-              {[
-                { swatch: 'bg-violet-700', label: 'ลึก > 1.8 ม.' },
-                { swatch: 'bg-rose-600', label: '1.2 – 2.0 ม.' },
-                { swatch: 'bg-amber-500', label: '0.8 – 1.4 ม.' },
-                { swatch: 'bg-sky-500', label: 'ท่วมผิวจราจร' }
-              ].map(item => (
-                <li key={item.label} className="flex items-center gap-1.5 text-[10px] text-slate-600">
-                  <span className={`size-2.5 shrink-0 rounded-sm ${item.swatch}`} />
-                  {item.label}
-                </li>
-              ))}
+              <li className="col-span-2 text-[10px] leading-relaxed text-slate-500">
+                แผนที่แสดงขอบเขตที่ตรวจพบจากข้อมูลดาวเทียม ไม่ใช่ระดับน้ำ ณ วินาทีปัจจุบัน
+              </li>
             </ul>
           </div>
 
           <div className="mb-2 border-t border-slate-100 pt-2">
             <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-sky-700">
               <CloudRain className="size-3" />
-              เรดาร์ฝน AI
+              WeatherNext (ข้อมูลตัวอย่าง)
             </p>
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
               <span>เบาบาง</span>
@@ -463,23 +444,6 @@ export const RescueMap: React.FC<RescueMapProps> = ({ requests, onSelectCase, is
           </div>
         </div>
 
-        {/* Selected satellite zone detail */}
-        {activeZone && (
-          <button
-            onClick={() => setActiveZone(null)}
-            className="absolute bottom-5 right-5 z-20 max-w-xs animate-fade rounded-2xl border border-violet-200 bg-white/95 p-3 text-left shadow-[var(--shadow-lift)] backdrop-blur-md"
-          >
-            <span className="mb-1 inline-flex items-center gap-1.5 text-[10px] font-bold text-violet-700">
-              <LocateFixed className="size-3" />
-              เขตเฝ้าระวังน้ำท่วม
-            </span>
-            <span className="block text-[12px] font-bold text-slate-900">{activeZone.name}</span>
-            <span className="mt-0.5 block text-[11px] text-slate-600">{activeZone.description}</span>
-            <span className="mt-1 block text-[10px] text-slate-400">
-              {activeZone.depthEstimate} · แตะเพื่อปิด
-            </span>
-          </button>
-        )}
       </div>
     </div>
   );

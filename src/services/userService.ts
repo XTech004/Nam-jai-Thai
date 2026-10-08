@@ -1,4 +1,4 @@
-import type { UserProfile } from '../types/sos';
+import type { UserProfile, SOSRequest } from '../types/sos';
 import { getSupabaseClient } from './supabaseClient';
 
 const LOCAL_USERS_KEY = 'thai_flood_registered_users_v1';
@@ -381,3 +381,100 @@ export function verifyOTP(phone: string, inputCode: string): { success: boolean;
   otpStore.delete(clean);
   return { success: true, message: 'ยืนยันรหัส OTP สำเร็จ' };
 }
+
+// ==========================================
+// Case Ownership & LINE Login Authorization
+// ==========================================
+
+const MY_CASES_KEY = 'thai_flood_my_case_ids';
+
+/**
+ * Returns list of SOS request IDs submitted from this client device
+ */
+export function getMyCaseIds(): string[] {
+  try {
+    const raw = localStorage.getItem(MY_CASES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Persists an SOS request ID as belonging to this client
+ */
+export function addMyCaseId(id: string): void {
+  try {
+    const current = getMyCaseIds();
+    if (!current.includes(id)) {
+      localStorage.setItem(MY_CASES_KEY, JSON.stringify([id, ...current]));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('thai_flood_my_cases_updated'));
+      }
+    }
+  } catch (e) {
+    console.error('Failed to save my case ID:', e);
+  }
+}
+
+/**
+ * Checks whether an SOS request belongs to the current user
+ */
+export function isMyCase(request: SOSRequest, currentUser: UserProfile | null): boolean {
+  // 1. Device storage match (submitted on this browser)
+  const localIds = getMyCaseIds();
+  if (localIds.includes(request.id)) {
+    return true;
+  }
+
+  // 2. LINE User ID match (logged in on any device)
+  if (currentUser?.lineUserId && request.createdByLineUserId) {
+    if (currentUser.lineUserId === request.createdByLineUserId) {
+      return true;
+    }
+  }
+
+  // 3. User profile ID match
+  if (currentUser?.id && request.createdByUserId) {
+    if (currentUser.id === request.createdByUserId) {
+      return true;
+    }
+  }
+
+  // 4. Phone number match if both exist
+  if (currentUser?.phone && request.primaryPhone) {
+    if (normalizePhone(currentUser.phone) === normalizePhone(request.primaryPhone)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export type EditCasePermission =
+  | { allowed: true }
+  | { allowed: false; reason: 'NOT_LOGGED_IN' | 'NOT_LINE_USER' | 'NOT_OWNER' };
+
+/**
+ * Evaluates whether the current user is permitted to edit this request's citizen details.
+ * Rule: Must be logged in via LINE AND must be the owner of the case.
+ */
+export function canEditCase(request: SOSRequest, currentUser: UserProfile | null): EditCasePermission {
+  if (!currentUser) {
+    return { allowed: false, reason: 'NOT_LOGGED_IN' };
+  }
+
+  const isLine = Boolean(currentUser.lineUserId) || currentUser.loginMethod === 'line';
+  if (!isLine) {
+    return { allowed: false, reason: 'NOT_LINE_USER' };
+  }
+
+  if (!isMyCase(request, currentUser)) {
+    return { allowed: false, reason: 'NOT_OWNER' };
+  }
+
+  return { allowed: true };
+}
+

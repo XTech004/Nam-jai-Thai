@@ -18,17 +18,26 @@ import {
   Users,
   BedDouble,
   Share2,
-  MessageCircle
+  MessageCircle,
+  Edit3,
+  Star
 } from 'lucide-react';
-import type { SOSRequest, RequestStatus } from '../types/sos';
+import type { SOSRequest, RequestStatus, UserProfile } from '../types/sos';
 import { formatThaiDateTime, getUrgencyInfo, getWaterLevelInfo, getStatusInfo, getGoogleMapsUrl } from '../utils/formatters';
 import { buildSosShareText, copyToClipboard } from '../utils/shareHelpers';
 import { maskPhone } from '../utils/privacy';
+import { isMyCase } from '../services/userService';
+import { EditCaseModal } from './EditCaseModal';
 
 interface RescueFeedProps {
   requests: SOSRequest[];
   onSelectCase: (request: SOSRequest) => void;
   onUpdateStatus: (id: string, status: RequestStatus, note?: string, rescuer?: string) => void;
+  onUpdateCase?: (updatedRequest: SOSRequest) => void;
+  currentUser?: UserProfile | null;
+  onOpenLineLogin?: () => void;
+  onGoToForm?: () => void;
+  initialScope?: 'ALL' | 'MY_CASES';
   onResetMock?: () => void;
   isAdmin?: boolean;
   onDeleteCase?: (id: string) => void;
@@ -53,12 +62,19 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   requests,
   onSelectCase,
   onUpdateStatus,
+  onUpdateCase,
+  currentUser = null,
+  onOpenLineLogin,
+  onGoToForm,
+  initialScope = 'ALL',
   onResetMock,
   isAdmin = false,
   onDeleteCase,
   onDeleteAllCompleted,
   onClearAll
 }) => {
+  const [viewScope, setViewScope] = useState<'ALL' | 'MY_CASES'>(initialScope);
+  const [caseToEdit, setCaseToEdit] = useState<SOSRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -67,6 +83,13 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync initialScope if changed externally
+  useEffect(() => {
+    if (initialScope) {
+      setViewScope(initialScope);
+    }
+  }, [initialScope]);
 
   useEffect(() => {
     if (!showAdminMenu) return;
@@ -88,20 +111,31 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
     return Array.from(set);
   }, [requests]);
 
+  // My Cases list
+  const myCases = useMemo(() => {
+    return requests.filter(r => isMyCase(r, currentUser));
+  }, [requests, currentUser]);
+
+  const myCasesCount = myCases.length;
+
   const counts = useMemo(
-    () => ({
-      total: requests.length,
-      critical: requests.filter(r => r.urgency === 'CRITICAL').length,
-      pending: requests.filter(r => r.status === 'PENDING').length,
-      responding: requests.filter(r => r.status === 'RESPONDING').length,
-      completed: requests.filter(r => r.status === 'COMPLETED').length
-    }),
-    [requests]
+    () => {
+      const scopeList = viewScope === 'MY_CASES' ? myCases : requests;
+      return {
+        total: scopeList.length,
+        critical: scopeList.filter(r => r.urgency === 'CRITICAL').length,
+        pending: scopeList.filter(r => r.status === 'PENDING').length,
+        responding: scopeList.filter(r => r.status === 'RESPONDING').length,
+        completed: scopeList.filter(r => r.status === 'COMPLETED').length
+      };
+    },
+    [requests, viewScope, myCases]
   );
 
   // Filtered requests
   const filteredRequests = useMemo(() => {
-    return requests.filter(req => {
+    const baseList = viewScope === 'MY_CASES' ? myCases : requests;
+    return baseList.filter(req => {
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchesName = req.fullName.toLowerCase().includes(term);
@@ -127,7 +161,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
 
       return true;
     });
-  }, [requests, searchTerm, urgencyFilter, statusFilter, provinceFilter]);
+  }, [requests, viewScope, myCases, searchTerm, urgencyFilter, statusFilter, provinceFilter]);
 
   const hasAdvancedFilter = statusFilter !== 'ALL' || provinceFilter !== 'ALL';
 
@@ -223,8 +257,101 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
         )}
       </header>
 
-      {/* Empty state */}
-      {requests.length === 0 ? (
+      {/* Scope Switcher: All Cases vs My Cases */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-white p-2 border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewScope('ALL')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              viewScope === 'ALL'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <span>📋 เคสทั้งหมดในระบบ</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
+              viewScope === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {requests.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewScope('MY_CASES')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              viewScope === 'MY_CASES'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-sm ring-2 ring-emerald-400'
+                : 'text-emerald-800 bg-emerald-50/60 hover:bg-emerald-100/80 border border-emerald-200/70'
+            }`}
+          >
+            <span className="text-amber-300">⭐</span>
+            <span>เคสของฉัน (ติดตามสถานะรับเรื่อง)</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
+              viewScope === 'MY_CASES' ? 'bg-white/25 text-white' : 'bg-emerald-200 text-emerald-900'
+            }`}>
+              {myCasesCount}
+            </span>
+          </button>
+        </div>
+
+        {viewScope === 'MY_CASES' && (
+          <div className="px-3 py-1.5 rounded-xl bg-emerald-50 text-[11px] font-semibold text-emerald-800 border border-emerald-200/80 flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>แสดงเฉพาะเคสที่คุณแจ้ง เพื่อตรวจสอบว่ามีทีมกู้ภัยรับเรื่องแล้วหรือยัง</span>
+          </div>
+        )}
+      </div>
+
+      {/* Empty states */}
+      {viewScope === 'MY_CASES' && myCasesCount === 0 ? (
+        <div className="surface px-6 py-12 sm:py-16 text-center space-y-3">
+          <div className="mx-auto grid size-16 place-items-center rounded-3xl bg-amber-50 text-amber-600 border border-amber-200">
+            <Star className="size-8 text-amber-500 fill-amber-400" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-800">
+            ยังไม่พบรายการขอความช่วยเหลือของคุณ
+          </h2>
+          <p className="mx-auto max-w-md text-xs leading-relaxed text-slate-500">
+            {currentUser?.lineUserId ? (
+              'คุณยังไม่มีเคสที่แจ้งขอความช่วยเหลือไว้ในระบบ หากประสบภัยและต้องการความช่วยเหลือ สามารถกดแจ้ง SOS ได้ทันที'
+            ) : (
+              'หากคุณเคยแจ้งเหตุไว้ หรือแจ้งจากเครื่องอื่น โปรดเข้าสู่ระบบด้วย LINE เพื่อซิงค์และดูว่ามีทีมกู้ภัยรับเรื่องแล้วหรือยัง'
+            )}
+          </p>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+            {!currentUser?.lineUserId && onOpenLineLogin && (
+              <button
+                type="button"
+                onClick={onOpenLineLogin}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#06C755] hover:bg-[#05b34c] px-4 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer"
+              >
+                <svg className="size-4 fill-white" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 5.82 2 10.53c0 2.94 1.76 5.53 4.45 6.99-.18.66-.66 2.39-.75 2.76-.12.45.16.44.34.32.14-.09 1.94-1.32 2.73-1.85.4.06.81.09 1.23.09 5.52 0 10-3.82 10-8.53S17.52 2 12 2z"/>
+                </svg>
+                <span>เข้าสู่ระบบด้วย LINE</span>
+              </button>
+            )}
+            {onGoToForm && (
+              <button
+                type="button"
+                onClick={onGoToForm}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer"
+              >
+                <span>แจ้งขอความช่วยเหลือ (SOS)</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setViewScope('ALL')}
+              className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 cursor-pointer"
+            >
+              ดูรายการเคสทั้งหมดในระบบ
+            </button>
+          </div>
+        </div>
+      ) : requests.length === 0 ? (
         <div className="surface px-6 py-16 text-center">
           <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
             <CheckCircle className="size-7" />
@@ -422,6 +549,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                 const urgency = getUrgencyInfo(req.urgency);
                 const water = getWaterLevelInfo(req.waterLevel);
                 const status = getStatusInfo(req.status);
+                const isOwner = isMyCase(req, currentUser);
                 const totalPeople =
                   req.people.adults + req.people.elderly + req.people.bedridden + req.people.children;
 
@@ -448,6 +576,11 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                         <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${status.badgeClass}`}>
                           {status.label}
                         </span>
+                        {isOwner && (
+                          <span className="rounded-full bg-amber-400 text-slate-950 px-2 py-0.5 text-[10px] font-bold shadow-2xs">
+                            ⭐ เคสของคุณ
+                          </span>
+                        )}
                         <span className="ml-auto flex items-center gap-1 text-[11px] text-slate-400">
                           <Clock className="size-3" />
                           {formatThaiDateTime(req.createdAt)}
@@ -512,6 +645,106 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                           </div>
                         </div>
                       </div>
+
+                      {/* Rescue Response Status Banner for this case */}
+                      {req.status === 'PENDING' && (
+                        <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50/90 p-2.5 flex items-center justify-between text-xs text-amber-950 shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                            <span className="font-bold text-amber-900">🟡 รอทีมกู้ภัยรับเรื่อง</span>
+                            <span className="hidden sm:inline text-amber-700 text-[11px]">(ระบบกำลังกระจายพิกัดสู่ทีมกู้ภัยในพื้นที่)</span>
+                          </div>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCaseToEdit(req);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                              title="แก้ไขข้อมูลเคสของคุณ"
+                            >
+                              <Edit3 className="size-3" />
+                              <span>แก้ไขข้อมูล</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {req.status === 'RESPONDING' && (
+                        <div className="mt-3 rounded-xl border border-sky-300 bg-sky-50/90 p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-sky-950 shadow-2xs">
+                          <div className="flex items-start sm:items-center gap-2">
+                            <span className="size-2.5 mt-0.5 sm:mt-0 rounded-full bg-sky-600 animate-pulse shrink-0" />
+                            <div>
+                              <span className="font-bold text-sky-900">🚨 มีทีมกู้ภัยรับเรื่องแล้ว!</span>
+                              <span className="ml-1.5 font-bold text-sky-950">
+                                🚒 {req.rescuedBy || 'ทีมกู้ภัยในพื้นที่'}
+                              </span>
+                              {req.responderNotes && (
+                                <span className="block sm:inline sm:ml-2 text-sky-800 text-[11px]">
+                                  ("{req.responderNotes}")
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCaseToEdit(req);
+                              }}
+                              className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                              title="แก้ไขข้อมูลเคสของคุณ"
+                            >
+                              <Edit3 className="size-3" />
+                              <span>แก้ไขข้อมูล</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {req.status === 'COMPLETED' && (
+                        <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50/90 p-2.5 flex items-center justify-between text-xs text-emerald-950 shadow-2xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+                            <span className="font-bold text-emerald-900">🟢 ได้รับความช่วยเหลือแล้ว</span>
+                            {req.rescuedBy && <span className="text-[11px] text-emerald-800">โดย {req.rescuedBy}</span>}
+                          </div>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCaseToEdit(req);
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-[11px] flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                            >
+                              <Edit3 className="size-3" />
+                              <span>อัปเดตข้อมูล</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {req.status === 'CANCELLED' && (
+                        <div className="mt-3 rounded-xl border border-slate-300 bg-slate-100 p-2 flex items-center justify-between text-xs text-slate-800 shadow-2xs">
+                          <span className="font-medium text-slate-600">⚪ ยกเลิกคำขอแล้ว</span>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCaseToEdit(req);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit3 className="size-3" />
+                              <span>แก้ไข</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       {/* Needs */}
                       {req.needs.length > 0 && (
@@ -600,7 +833,21 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
                               </>
                             )}
                           </button>
-                        </div>
+                            {isOwner && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCaseToEdit(req);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 transition-colors hover:bg-emerald-100 cursor-pointer shadow-2xs"
+                                title="แก้ไขข้อมูลเคสของคุณ"
+                              >
+                                <Edit3 className="size-3.5" />
+                                <span>แก้ไขเคสนี้</span>
+                              </button>
+                            )}
+                          </div>
 
                         <div className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           {req.status === 'PENDING' && (
@@ -649,6 +896,27 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
             </ul>
           )}
         </>
+      )}
+
+      {/* Citizen Case Owner Edit Modal */}
+      {caseToEdit && (
+        <EditCaseModal
+          request={caseToEdit}
+          isOpen={Boolean(caseToEdit)}
+          currentUser={currentUser || null}
+          onClose={() => setCaseToEdit(null)}
+          onSave={(updated) => {
+            if (onUpdateCase) {
+              onUpdateCase(updated);
+            }
+            setCaseToEdit(null);
+          }}
+          onOpenLineLogin={() => {
+            if (onOpenLineLogin) {
+              onOpenLineLogin();
+            }
+          }}
+        />
       )}
     </div>
   );

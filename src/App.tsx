@@ -18,6 +18,7 @@ import {
   fetchSOSRequests, 
   createSOSRequest, 
   updateSOSRequestStatus, 
+  updateSOSRequest,
   deleteSOSRequest,
   deleteCompletedSOSRequests,
   clearAllSOSRequests,
@@ -197,6 +198,15 @@ export function App() {
     }
   };
 
+  // Handle Citizen Case Update
+  const handleUpdateCase = async (updatedReq: SOSRequest) => {
+    const updated = await updateSOSRequest(updatedReq);
+    setRequests(updated);
+    if (selectedCase && selectedCase.id === updatedReq.id) {
+      setSelectedCase(updatedReq);
+    }
+  };
+
   // Reset mock data for demo
   const handleResetMock = async () => {
     if (window.confirm('คุณต้องการรีเซ็ตข้อมูลทั้งหมดกลับเป็นข้อมูลตัวอย่างตั้งต้นหรือไม่?')) {
@@ -238,6 +248,10 @@ export function App() {
             requests={requests}
             onSelectCase={(req) => setSelectedCase(req)}
             onUpdateStatus={handleUpdateStatus}
+            onUpdateCase={handleUpdateCase}
+            currentUser={currentUser}
+            onOpenLineLogin={() => setIsUserAuthOpen(true)}
+            onGoToForm={() => setActiveTab('form')}
             isAdmin={isRescuer}
             onResetMock={handleResetMock}
             onDeleteCase={handleDeleteCase}
@@ -313,14 +327,17 @@ export function App() {
         />
       )}
 
-      {/* Rescuer Detailed Case View Modal */}
+      {/* Rescuer & Citizen Detailed Case View Modal */}
       {selectedCase && (
         <CaseDetailModal
           request={selectedCase}
           onClose={() => setSelectedCase(null)}
           onUpdateStatus={handleUpdateStatus}
+          onUpdateCase={handleUpdateCase}
+          currentUser={currentUser}
           isAdmin={isRescuer}
           onDeleteCase={handleDeleteCase}
+          onOpenLineLogin={() => setIsUserAuthOpen(true)}
           onRequestAdminLogin={() => {
             if (!currentUser) {
               setIsUserAuthOpen(true);

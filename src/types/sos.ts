@@ -55,6 +55,10 @@ export interface SOSRequest {
   // กู้ภัยติดตามสถานะ
   responderNotes?: string;
   rescuedBy?: string;
+
+  // ผู้สร้างเคส (สำหรับสิทธิ์การแก้ไขและแสดงเคสของฉัน)
+  createdByLineUserId?: string;
+  createdByUserId?: string;
 }
 
 export interface EmergencyContact {
