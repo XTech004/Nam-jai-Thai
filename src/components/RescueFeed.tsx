@@ -895,25 +895,26 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
 
                         <div className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           {req.status === 'PENDING' && (
-                            <button
-                              onClick={() => onUpdateStatus(req.id, 'RESPONDING', 'ทีมกู้ภัยรับเรื่องแล้ว กำลังเดินทางเข้าช่วยเหลือ')}
-                              className="rounded-full bg-amber-400 px-3 py-1.5 text-[11px] font-bold text-slate-900 transition-colors hover:bg-amber-500"
-                            >
-                              รับเคส / ไปช่วย
-                            </button>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 shadow-2xs">
+                              <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              <span>รอรับเรื่อง</span>
+                            </span>
                           )}
                           {req.status === 'RESPONDING' && (
-                            <button
-                              onClick={() => onUpdateStatus(req.id, 'COMPLETED', 'ช่วยเหลือและส่งตัวยังศูนย์พักพิงเรียบร้อย')}
-                              className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-emerald-700"
-                            >
-                              ช่วยสำเร็จแล้ว
-                            </button>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-800 shadow-2xs">
+                              <span className="size-1.5 rounded-full bg-sky-500 animate-pulse" />
+                              <span>กำลังไปช่วย</span>
+                            </span>
                           )}
                           {req.status === 'COMPLETED' && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700">
-                              <CheckCircle className="size-3.5" />
-                              สำเร็จแล้ว
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 shadow-2xs">
+                              <CheckCircle className="size-3.5 text-emerald-600" />
+                              <span>ช่วยสำเร็จแล้ว</span>
+                            </span>
+                          )}
+                          {req.status === 'CANCELLED' && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 shadow-2xs">
+                              <span>ยกเลิกแล้ว</span>
                             </span>
                           )}
 

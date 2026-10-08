@@ -257,51 +257,39 @@ export const EditCaseModal: React.FC<EditCaseModalProps> = ({
           /* ======================================================== */
           <form onSubmit={handleSubmit} className="max-h-[78vh] overflow-y-auto p-5 sm:p-6 space-y-5">
             
-            {/* Status & Resolution banner */}
+            {/* Status (Display Only) */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2">
               <label className="block text-xs font-bold text-slate-800">
-                สถานะคำขอของคุณ (ผู้แจ้งสามารถเปลี่ยนเป็นช่วยเหลือแล้วหรือยกเลิกได้)
+                สถานะคำขอปัจจุบัน
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStatus('PENDING')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
-                    status === 'PENDING'
-                      ? 'border-amber-500 bg-amber-50 text-amber-900 ring-2 ring-amber-400'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="block">🟡 ยังต้องการช่วยเหลือ</span>
-                  <span className="text-[10px] font-normal text-slate-500">รอทีมกู้ภัยเข้าพื้นที่</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatus('COMPLETED')}
-                  className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
-                    status === 'COMPLETED'
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-400'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="block">🟢 ปลอดภัยแล้ว</span>
-                  <span className="text-[10px] font-normal text-slate-500">ได้รับการช่วยเหลือแล้ว</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setStatus('CANCELLED')}
-                  className={`col-span-2 sm:col-span-1 p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
-                    status === 'CANCELLED'
-                      ? 'border-slate-500 bg-slate-100 text-slate-900 ring-2 ring-slate-400'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <span className="block">⚪ ขอยกเลิกคำขอ</span>
-                  <span className="text-[10px] font-normal text-slate-500">อพยพเองแล้ว / ไม่ต้องการแล้ว</span>
-                </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {status === 'PENDING' && (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 shadow-2xs">
+                    <span className="size-2 rounded-full bg-amber-500 animate-ping" />
+                    <span>🟡 รอดำเนินการ (รอทีมกู้ภัยเข้าพื้นที่รับเรื่อง)</span>
+                  </span>
+                )}
+                {status === 'RESPONDING' && (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-3.5 py-2 text-xs font-bold text-sky-900 shadow-2xs">
+                    <span className="size-2 rounded-full bg-sky-500 animate-pulse" />
+                    <span>🚨 กำลังเข้าช่วยเหลือ (มีทีมกู้ภัยรับเรื่องแล้ว)</span>
+                  </span>
+                )}
+                {status === 'COMPLETED' && (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-900 shadow-2xs">
+                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <span>🟢 ปลอดภัยแล้ว / ได้รับการช่วยเหลือเรียบร้อย</span>
+                  </span>
+                )}
+                {status === 'CANCELLED' && (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs">
+                    <span>⚪ ยกเลิกคำขอแล้ว</span>
+                  </span>
+                )}
               </div>
+              <p className="text-[11px] text-slate-500">
+                * สถานะจะได้รับการอัปเดตและบันทึกโดยตรงจากทีมกู้ภัยในพื้นที่
+              </p>
             </div>
 
             {/* Urgency Level */}
