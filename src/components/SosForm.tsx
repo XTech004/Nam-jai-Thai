@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   MapPin,
   AlertOctagon,
@@ -21,6 +21,7 @@ import {
   OctagonAlert,
   Link2,
   X,
+  Sparkles,
   type LucideIcon
 } from 'lucide-react';
 import type { SOSRequest, UrgencyLevel, WaterLevel, PeopleCount, UserProfile } from '../types/sos';
@@ -29,6 +30,7 @@ import { getProvinces, getDistricts, getSubDistricts } from '../utils/thaiAddres
 import { formatPhone, addMyCaseId } from '../services/userService';
 import { parseGoogleMapsCoordinates } from '../utils/formatters';
 import { LocationPreviewMap } from './LocationPreviewMap';
+import { reverseGeocodeThaiLocation } from '../utils/reverseGeocoding';
 
 interface SosFormProps {
   onSubmitSuccess: (newRequest: SOSRequest) => void;
@@ -166,6 +168,61 @@ export const SosForm: React.FC<SosFormProps> = ({
   const [isResolvingUrl, setIsResolvingUrl] = useState<boolean>(false);
   const [resolveError, setResolveError] = useState<string>('');
 
+  // Reverse Geocoding & Address Auto-fill from Pin Coordinates
+  const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
+  const [autoFilledSummary, setAutoFilledSummary] = useState<string>('');
+  const lastGeocodedCoords = useRef<{ lat: number; lng: number } | null>(null);
+
+  const autoFillFromCoordinates = useCallback(async (targetLat: number, targetLng: number, force = false) => {
+    if (!targetLat || !targetLng) return;
+
+    // Check if coordinates moved significantly (> ~15 meters or force)
+    if (!force && lastGeocodedCoords.current) {
+      const latDiff = Math.abs(lastGeocodedCoords.current.lat - targetLat);
+      const lngDiff = Math.abs(lastGeocodedCoords.current.lng - targetLng);
+      if (latDiff < 0.00015 && lngDiff < 0.00015) {
+        return;
+      }
+    }
+
+    setIsGeocoding(true);
+    try {
+      const result = await reverseGeocodeThaiLocation(targetLat, targetLng);
+      lastGeocodedCoords.current = { lat: targetLat, lng: targetLng };
+
+      if (result && (result.province || result.district)) {
+        if (result.province) {
+          setProvince(result.province);
+          setFormErrors(prev => ({ ...prev, province: '' }));
+        }
+        if (result.district) {
+          setDistrict(result.district);
+          setFormErrors(prev => ({ ...prev, district: '' }));
+        }
+        if (result.subDistrict) {
+          setSubDistrict(result.subDistrict);
+        }
+        if (result.suggestedAddress || result.road) {
+          setAddress(prev => (prev ? prev : (result.suggestedAddress || result.road || '')));
+        }
+        if (result.suggestedLandmark) {
+          setLandmark(prev => (prev ? prev : result.suggestedLandmark || ''));
+        }
+
+        const parts: string[] = [];
+        if (result.province) parts.push(`จ.${result.province}`);
+        if (result.district) parts.push(`อ.${result.district}`);
+        if (result.subDistrict) parts.push(`ต.${result.subDistrict}`);
+
+        setAutoFilledSummary(parts.join(' > '));
+      }
+    } catch (err) {
+      console.warn('Auto reverse geocoding error:', err);
+    } finally {
+      setIsGeocoding(false);
+    }
+  }, []);
+
   const handleGoogleMapsInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setGoogleMapsInput(val);
@@ -193,6 +250,7 @@ export const SosForm: React.FC<SosFormProps> = ({
       }
       setGpsError('');
       setResolveError('');
+      autoFillFromCoordinates(parsed.lat, parsed.lng);
       return;
     }
 
@@ -216,6 +274,7 @@ export const SosForm: React.FC<SosFormProps> = ({
           }
           setGpsError('');
           setResolveError('');
+          autoFillFromCoordinates(data.lat, data.lng);
         } else {
           setIsParsedFromUrl(false);
           setDetectedPlaceName('');
@@ -307,6 +366,7 @@ export const SosForm: React.FC<SosFormProps> = ({
     setProvince(newProvince);
     setDistrict('');
     setSubDistrict('');
+    setAutoFilledSummary('');
     if (formErrors.province) {
       setFormErrors(prev => ({ ...prev, province: '' }));
     }
@@ -315,6 +375,7 @@ export const SosForm: React.FC<SosFormProps> = ({
   const handleDistrictChange = (newDistrict: string) => {
     setDistrict(newDistrict);
     setSubDistrict('');
+    setAutoFilledSummary('');
     if (formErrors.district) {
       setFormErrors(prev => ({ ...prev, district: '' }));
     }
@@ -322,6 +383,7 @@ export const SosForm: React.FC<SosFormProps> = ({
 
   const handleSubDistrictChange = (newSubDistrict: string) => {
     setSubDistrict(newSubDistrict);
+    setAutoFilledSummary('');
   };
 
   // Auto-fill contact info if currentUser is logged in
@@ -352,13 +414,16 @@ export const SosForm: React.FC<SosFormProps> = ({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const newLat = position.coords.latitude;
+        const newLng = position.coords.longitude;
         setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat: newLat,
+          lng: newLng,
           accuracy: Math.round(position.coords.accuracy)
         });
         setFormErrors(prev => ({ ...prev, coordinates: '' }));
         setGpsLoading(false);
+        autoFillFromCoordinates(newLat, newLng);
       },
       (error) => {
         console.warn('GPS Error:', error);
@@ -766,12 +831,67 @@ export const SosForm: React.FC<SosFormProps> = ({
                 lng={coords.lng}
                 onLocationChange={(newLat, newLng) => {
                   setCoords({ lat: newLat, lng: newLng, accuracy: 5 });
+                  autoFillFromCoordinates(newLat, newLng);
                 }}
                 isFromGoogleMaps={isParsedFromUrl}
                 googleMapsUrl={googleMapsInput}
+                isGeocoding={isGeocoding}
+                autoFilledSummary={autoFilledSummary}
+                onTriggerAutoFill={() => autoFillFromCoordinates(coords.lat, coords.lng, true)}
               />
             )}
           </div>
+
+          {/* Auto-fill from pin status indicator */}
+          {(isGeocoding || autoFilledSummary || coords) && (
+            <div className="mb-3">
+              {isGeocoding ? (
+                <div className="flex items-center gap-2.5 rounded-xl border border-sky-200 bg-sky-50/90 px-3.5 py-2.5 text-xs text-sky-800 shadow-2xs animate-pulse">
+                  <Loader2 className="size-4 animate-spin text-sky-600 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="font-bold">กำลังตรวจจับตำแหน่งจากหมุด...</span>
+                    <span className="ml-1.5 text-[11px] text-sky-700 hidden sm:inline">ระบบกำลังกรอก จังหวัด, อำเภอ, ตำบล ให้อัตโนมัติ</span>
+                  </div>
+                </div>
+              ) : autoFilledSummary ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3.5 py-2.5 text-xs text-emerald-900 shadow-2xs">
+                  <div className="flex items-start sm:items-center gap-2 min-w-0">
+                    <Sparkles className="size-4 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+                    <div className="min-w-0">
+                      <span className="font-bold text-emerald-950">✨ กรอกข้อมูลจากหมุดสำเร็จ:</span>{' '}
+                      <span className="font-semibold text-emerald-800 break-words">{autoFilledSummary}</span>
+                    </div>
+                  </div>
+                  {coords && (
+                    <button
+                      type="button"
+                      onClick={() => autoFillFromCoordinates(coords.lat, coords.lng, true)}
+                      className="self-start sm:self-auto shrink-0 inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100/60 hover:text-emerald-950 active:scale-95 transition cursor-pointer"
+                      title="อ่านพิกัดจากหมุดและกรอกใหม่อีกครั้ง"
+                    >
+                      <Sparkles className="size-3" />
+                      <span>ดึงพิกัดซ้ำ</span>
+                    </button>
+                  )}
+                </div>
+              ) : coords ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3.5 py-2 text-xs text-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-3.5 text-blue-600 shrink-0" />
+                    <span className="text-[11px] text-slate-600">มีพิกัดหมุดแล้ว ต้องการให้ระบบกรอกข้อมูลที่อยู่อัตโนมัติหรือไม่?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => autoFillFromCoordinates(coords.lat, coords.lng, true)}
+                    className="self-start sm:self-auto shrink-0 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 active:scale-95 transition cursor-pointer"
+                  >
+                    <Sparkles className="size-3" />
+                    <span>กรอกอัตโนมัติจากหมุด</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             <div>

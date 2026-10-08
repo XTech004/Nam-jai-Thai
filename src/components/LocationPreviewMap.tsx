@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Satellite, Map as MapIcon, ExternalLink, CheckCircle2, Move } from 'lucide-react';
+import { MapPin, Satellite, Map as MapIcon, ExternalLink, CheckCircle2, Move, Sparkles, Loader2 } from 'lucide-react';
 import { getGoogleMapsUrl } from '../utils/formatters';
 
 interface LocationPreviewMapProps {
@@ -10,6 +10,9 @@ interface LocationPreviewMapProps {
   onLocationChange?: (newLat: number, newLng: number) => void;
   isFromGoogleMaps?: boolean;
   googleMapsUrl?: string;
+  isGeocoding?: boolean;
+  autoFilledSummary?: string;
+  onTriggerAutoFill?: () => void;
 }
 
 export const LocationPreviewMap: React.FC<LocationPreviewMapProps> = ({
@@ -17,7 +20,10 @@ export const LocationPreviewMap: React.FC<LocationPreviewMapProps> = ({
   lng,
   onLocationChange,
   isFromGoogleMaps = false,
-  googleMapsUrl
+  googleMapsUrl,
+  isGeocoding = false,
+  autoFilledSummary,
+  onTriggerAutoFill
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -139,6 +145,18 @@ export const LocationPreviewMap: React.FC<LocationPreviewMapProps> = ({
           <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 shrink-0">
             {isFromGoogleMaps ? 'แม่นยำสูง' : 'พร้อมส่ง'}
           </span>
+          {isGeocoding && (
+            <span className="flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 animate-pulse shrink-0">
+              <Loader2 className="size-2.5 animate-spin text-sky-600" />
+              <span>ตรวจจับที่อยู่...</span>
+            </span>
+          )}
+          {!isGeocoding && autoFilledSummary && (
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 shrink-0">
+              <Sparkles className="size-2.5 text-emerald-600" />
+              <span>กรอกที่อยู่อัตโนมัติแล้ว</span>
+            </span>
+          )}
         </div>
 
         {/* View toggle */}
@@ -201,9 +219,22 @@ export const LocationPreviewMap: React.FC<LocationPreviewMapProps> = ({
       </div>
 
       {/* Footer coordinates bar */}
-      <div className="flex items-center justify-between bg-white px-3 py-1.5 text-[11px] text-slate-500">
-        <span>ละติจูด: <b className="text-slate-800 font-mono">{currentCoords.lat.toFixed(5)}</b></span>
-        <span>ลองจิจูด: <b className="text-slate-800 font-mono">{currentCoords.lng.toFixed(5)}</b></span>
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-3 py-1.5 text-[11px] text-slate-500">
+        <div className="flex items-center gap-3">
+          <span>ละติจูด: <b className="text-slate-800 font-mono">{currentCoords.lat.toFixed(5)}</b></span>
+          <span>ลองจิจูด: <b className="text-slate-800 font-mono">{currentCoords.lng.toFixed(5)}</b></span>
+        </div>
+        {onTriggerAutoFill && (
+          <button
+            type="button"
+            onClick={onTriggerAutoFill}
+            disabled={isGeocoding}
+            className="inline-flex items-center gap-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 font-bold transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <Sparkles className="size-3 text-blue-600" />
+            <span>กรอกที่อยู่อัตโนมัติจากหมุด</span>
+          </button>
+        )}
       </div>
     </div>
   );
