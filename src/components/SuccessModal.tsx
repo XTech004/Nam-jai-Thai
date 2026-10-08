@@ -160,7 +160,7 @@ export const SuccessModal: React.FC<SuccessModalProps> = ({
               className="flex-1 py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 flex items-center justify-center gap-1.5"
             >
               <ExternalLink className="w-4 h-4" />
-              <span>ดูรายการแจ้งเหตุทั้งหมด</span>
+              <span>ไปติดตามสถานะเคส</span>
             </button>
           </div>
         </div>

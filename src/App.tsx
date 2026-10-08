@@ -9,7 +9,7 @@ import { SuccessModal } from './components/SuccessModal';
 import { CaseDetailModal } from './components/CaseDetailModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
-import { UserAuthModal } from './components/UserAuthModal';
+import { CitizenLoginPage } from './components/CitizenLoginPage';
 import { RescuerVerificationModal } from './components/RescuerVerificationModal';
 import type { SOSRequest, RequestStatus, UserProfile } from './types/sos';
 import { getCurrentUser, logoutUser, USER_AUTH_EVENT } from './services/userService';
@@ -53,7 +53,6 @@ export function App() {
 
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
-  const [isUserAuthOpen, setIsUserAuthOpen] = useState(false);
   const [isRescuerModalOpen, setIsRescuerModalOpen] = useState(false);
 
   // Check if admin=1 is present in URL
@@ -226,7 +225,7 @@ export function App() {
         isAdmin={isRescuer}
         showAdminOption={hasAdminUrl}
         currentUser={currentUser}
-        onOpenUserAuth={() => setIsUserAuthOpen(true)}
+        onOpenUserAuth={() => setActiveTab('login')}
         onLogoutUser={handleLogoutUser}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
@@ -239,7 +238,7 @@ export function App() {
           <SosForm 
             onSubmitSuccess={handleSubmitSuccess}
             currentUser={currentUser}
-            onOpenUserAuth={() => setIsUserAuthOpen(true)}
+            onOpenUserAuth={() => setActiveTab('login')}
           />
         )}
 
@@ -250,7 +249,7 @@ export function App() {
             onUpdateStatus={handleUpdateStatus}
             onUpdateCase={handleUpdateCase}
             currentUser={currentUser}
-            onOpenLineLogin={() => setIsUserAuthOpen(true)}
+            onOpenLineLogin={() => setActiveTab('login')}
             onGoToForm={() => setActiveTab('form')}
             isAdmin={isRescuer}
             onResetMock={handleResetMock}
@@ -268,6 +267,17 @@ export function App() {
           />
         )}
 
+        {activeTab === 'login' && (
+          <CitizenLoginPage
+            currentUser={currentUser}
+            onLoginSuccess={user => {
+              setCurrentUser(user);
+              setActiveTab('feed');
+            }}
+            onContinueAsGuest={() => setActiveTab('form')}
+          />
+        )}
+
         {activeTab === 'hotlines' && (
           <EmergencyHotlines />
         )}
@@ -277,15 +287,6 @@ export function App() {
         )}
       </main>
 
-      {/* User Login & OTP Verification Modal */}
-      <UserAuthModal
-        isOpen={isUserAuthOpen}
-        onClose={() => setIsUserAuthOpen(false)}
-        onSuccess={(user) => {
-          setCurrentUser(user);
-        }}
-      />
-
       {/* Rescuer Organization Verification Modal */}
       <RescuerVerificationModal
         isOpen={isRescuerModalOpen}
@@ -294,7 +295,7 @@ export function App() {
         onVerified={(user) => {
           setCurrentUser(user);
         }}
-        onOpenLineLogin={() => setIsUserAuthOpen(true)}
+        onOpenLineLogin={() => setActiveTab('login')}
       />
 
       {/* Admin Login Modal */}
@@ -337,10 +338,10 @@ export function App() {
           currentUser={currentUser}
           isAdmin={isRescuer}
           onDeleteCase={handleDeleteCase}
-          onOpenLineLogin={() => setIsUserAuthOpen(true)}
+          onOpenLineLogin={() => setActiveTab('login')}
           onRequestAdminLogin={() => {
             if (!currentUser) {
-              setIsUserAuthOpen(true);
+              setActiveTab('login');
             } else {
               setIsRescuerModalOpen(true);
             }

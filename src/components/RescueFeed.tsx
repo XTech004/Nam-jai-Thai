@@ -76,6 +76,7 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
   const [viewScope, setViewScope] = useState<'ALL' | 'MY_CASES'>(initialScope);
   const [caseToEdit, setCaseToEdit] = useState<SOSRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [myCaseLookup, setMyCaseLookup] = useState<string>('');
   const [urgencyFilter, setUrgencyFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [provinceFilter, setProvinceFilter] = useState<string>('ALL');
@@ -172,6 +173,16 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
     setProvinceFilter('ALL');
   };
 
+  const handleMyCaseLookup = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const caseId = myCaseLookup.trim();
+    setViewScope('MY_CASES');
+    setSearchTerm(caseId);
+    setUrgencyFilter('ALL');
+    setStatusFilter('ALL');
+    setProvinceFilter('ALL');
+  };
+
   const handleCopy = async (req: SOSRequest, e: React.MouseEvent) => {
     e.stopPropagation();
     const text = buildSosShareText(req);
@@ -256,6 +267,39 @@ export const RescueFeed: React.FC<RescueFeedProps> = ({
           </div>
         )}
       </header>
+
+      {/* Private case tracking: only filters cases already linked to this account/device. */}
+      <form onSubmit={handleMyCaseLookup} className="surface mb-4 flex flex-col gap-3 border-emerald-200 bg-emerald-50/60 p-4 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <label htmlFor="my-case-lookup" className="block text-sm font-bold text-slate-900">
+            ติดตามเคสของฉัน
+          </label>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+            ค้นหาด้วยรหัสเคส ระบบจะแสดงเฉพาะเคสที่เชื่อมกับบัญชีหรือเบราว์เซอร์นี้
+          </p>
+        </div>
+        <div className="flex w-full gap-2 sm:w-auto sm:min-w-[21rem]">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="my-case-lookup"
+              type="search"
+              value={myCaseLookup}
+              onChange={event => setMyCaseLookup(event.target.value)}
+              placeholder="เช่น SOS-2026-1234"
+              autoComplete="off"
+              className="field bg-white pl-9"
+              aria-label="รหัสเคสของฉัน"
+            />
+          </div>
+          <button
+            type="submit"
+            className="shrink-0 rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+          >
+            ค้นหาเคส
+          </button>
+        </div>
+      </form>
 
       {/* Scope Switcher: All Cases vs My Cases */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-white p-2 border border-slate-200/90 shadow-2xs">

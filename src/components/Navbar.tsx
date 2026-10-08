@@ -16,7 +16,7 @@ import type { SOSRequest, UserProfile } from '../types/sos';
 import { isSupabaseActive } from '../services/supabaseClient';
 import { isMyCase } from '../services/userService';
 
-export type TabKey = 'form' | 'feed' | 'map' | 'hotlines' | 'guide';
+export type TabKey = 'form' | 'feed' | 'map' | 'hotlines' | 'guide' | 'login';
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: typeof AlertTriangle }[] = [
   { key: 'form', label: 'แจ้งขอความช่วยเหลือ', icon: AlertTriangle },
@@ -180,7 +180,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
           ) : (
-            onOpenUserAuth && (
+            onOpenUserAuth && activeTab !== 'login' && (
               <button
                 onClick={onOpenUserAuth}
                 className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 transition-colors hover:bg-emerald-100 hover:border-emerald-400 cursor-pointer shadow-xs"

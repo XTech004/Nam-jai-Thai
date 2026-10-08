@@ -1072,7 +1072,7 @@ export const SosForm: React.FC<SosFormProps> = ({
             onOpenUserAuth && (
               <div className="mb-4 flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[11px] leading-snug text-slate-600">
-                  💡 แนะนำ: เข้าสู่ระบบด้วย LINE เพื่อดึงชื่ออัตโนมัติและเพิ่มความน่าเชื่อถือให้เคส
+                  💡 เข้าสู่ระบบด้วย LINE เพื่อกรอกชื่ออัตโนมัติและติดตามเคสของคุณ
                 </span>
                 <button
                   type="button"
