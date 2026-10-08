@@ -134,7 +134,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {currentUser ? (
             <div className="flex items-center gap-1.5">
-              {currentUser.role === 'RESCUER' ? (
+              {currentUser.role === 'ADMIN' ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-900"
+                  title="สิทธิ์แอดมินสำหรับ demo"
+                >
+                  <ShieldCheck className="size-3.5" />
+                  <span>แอดมิน (demo)</span>
+                </span>
+              ) : currentUser.role === 'RESCUER' ? (
                 <button
                   type="button"
                   onClick={onOpenRescuerVerify}

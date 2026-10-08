@@ -5,6 +5,9 @@ const LOCAL_USERS_KEY = 'thai_flood_registered_users_v1';
 const CURRENT_USER_KEY = 'thai_flood_current_user_v1';
 export const USER_AUTH_EVENT = 'thai_flood_user_auth_changed';
 
+// Demo bootstrap only: client-side role assignment is not a security boundary.
+const DEMO_ADMIN_LINE_USER_ID = 'Ubb88aef0ac3cc043da5511b723d3d3c8';
+
 // Clean and normalize Thai phone number
 export function normalizePhone(rawPhone: string): string {
   let cleaned = rawPhone.replace(/\D/g, '');
@@ -53,7 +56,13 @@ export function getCurrentUser(): UserProfile | null {
   try {
     const raw = localStorage.getItem(CURRENT_USER_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as UserProfile;
+    const profile = JSON.parse(raw) as UserProfile;
+    if (profile.lineUserId === DEMO_ADMIN_LINE_USER_ID && profile.role !== 'ADMIN') {
+      const adminProfile: UserProfile = { ...profile, role: 'ADMIN' };
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(adminProfile));
+      return adminProfile;
+    }
+    return profile;
   } catch (e) {
     console.error('Failed to read current user:', e);
     return null;
@@ -229,7 +238,7 @@ export async function registerOrLoginLineUser(lineProfile: {
     avatarUrl: lineProfile.pictureUrl,
     lineUserId: lineProfile.userId,
     loginMethod: 'line',
-    role: existing?.role || 'CITIZEN',
+    role: lineProfile.userId === DEMO_ADMIN_LINE_USER_ID ? 'ADMIN' : existing?.role || 'CITIZEN',
     rescueOrg: existing?.rescueOrg,
     callsign: existing?.callsign,
   };
@@ -477,4 +486,3 @@ export function canEditCase(request: SOSRequest, currentUser: UserProfile | null
 
   return { allowed: true };
 }
-
